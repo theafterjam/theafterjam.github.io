@@ -2565,6 +2565,17 @@ function getAudioCtx() {
   return audioCtx;
 }
 
+// Unlock audio on first user interaction (required for mobile)
+function unlockAudio() {
+  getAudioCtx();
+  document.removeEventListener('touchstart', unlockAudio);
+  document.removeEventListener('touchend', unlockAudio);
+  document.removeEventListener('click', unlockAudio);
+}
+document.addEventListener('touchstart', unlockAudio, { once: true });
+document.addEventListener('touchend', unlockAudio, { once: true });
+document.addEventListener('click', unlockAudio, { once: true });
+
 function playClick(accent) {
   if (clickVolume === 0) return;
   const ctx = getAudioCtx();
