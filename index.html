@@ -176,15 +176,26 @@
   .sidebar-toggle { display: none; position: fixed; top: 8px; left: 8px; z-index: 200; background: #2c3e50; color: #fff; border: none; border-radius: 6px; padding: 8px 11px; cursor: pointer; font-size: 1.2em; line-height: 1; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
   .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 90; }
 
+  /* === Mobile toolbar === */
+  .mobile-toolbar { display: none; padding: 8px 12px 8px 52px; border-bottom: 1px solid var(--border); background: var(--card); position: sticky; top: 0; z-index: 10; align-items: center; gap: 8px; }
+  .mobile-toolbar button { font-size: 1em; padding: 6px 12px; border: 1px solid var(--border); border-radius: 4px; background: var(--card); cursor: pointer; }
+  .mobile-toolbar .mobile-play { background: var(--accent); color: #fff; border-color: var(--accent); font-size: 1.1em; }
+  .mobile-toolbar .mobile-play.playing { background: #e74c3c; border-color: #e74c3c; }
+  .mobile-toolbar .mobile-settings { background: #95a5a6; color: #fff; border-color: #95a5a6; }
+  .mobile-settings-panel { display: none; flex-wrap: wrap; gap: 10px; align-items: center; padding: 12px 12px 12px 52px; border-bottom: 1px solid var(--border); background: var(--bg); position: sticky; top: 42px; z-index: 9; }
+  .mobile-settings-panel.visible { display: flex; }
+
   @media (max-width: 768px) {
     .sidebar { position: fixed; left: 0; top: 0; bottom: 0; z-index: 100; transform: translateX(-100%); }
     .sidebar.open { transform: translateX(0); }
     .sidebar-toggle { display: block; }
     .sidebar-overlay.active { display: block; }
-    .toolbar { padding-left: 52px; }
-    .toolbar button, .toolbar select { padding: 7px 10px; }
+    .toolbar { display: none; }
+    .mobile-toolbar { display: flex; }
+    .tuning-float-header { top: 42px; }
     #songList li { padding: 12px 14px; }
     .song-delete { padding: 4px 8px; font-size: 1.2em; }
+    #editArea { top: 42px; }
   }
 
   @media print {
@@ -305,6 +316,55 @@
           <button onclick="adjustFormRepeats(1)">+</button>
         </div>
         <button class="toolbar-btn" id="analysisBtn" onclick="toggleAnalysis()">Analysis</button>
+      </div>
+    </div>
+
+    <div class="mobile-toolbar" id="mobileToolbar">
+      <button class="mobile-play" id="mobilePlayBtn" onclick="togglePlayback()">&#9654;</button>
+      <button onclick="toggleEditArea()">Edit</button>
+      <button class="mobile-settings" id="mobileSettingsBtn" onclick="toggleMobileSettings()">&#9881; Settings</button>
+    </div>
+    <div class="mobile-settings-panel" id="mobileSettingsPanel">
+      <label>Tuning:</label>
+      <select onchange="setTuning(this.value)" id="mobileTuningSelect">
+        <option value="GCEA" selected>Standard (GCEA)</option>
+        <option value="DGBE">Baritone (DGBE)</option>
+        <option value="BOTH">Both (side by side)</option>
+      </select>
+      <div class="transpose-control">
+        <label>Transpose:</label>
+        <button onclick="transposeStep(-1)">&minus;</button>
+        <span id="mobileTransposeValue">0</span>
+        <button onclick="transposeStep(1)">+</button>
+      </div>
+      <div class="toolbar-group">
+        <label>Layout:</label>
+        <button id="mobileLayoutLyricsBtn" class="active" onclick="setLayout('lyrics')">Lyrics</button>
+        <button id="mobileLayoutGridBtn" onclick="setLayout('grid')">Grid</button>
+      </div>
+      <div class="toolbar-group" id="mobileChordFormatGroup">
+        <label>Chords:</label>
+        <button id="mobileChordTextBtn" class="active" onclick="setChordFormat('text')">Text</button>
+        <button id="mobileChordChartBtn" onclick="setChordFormat('chart')">Chart</button>
+      </div>
+      <div class="size-control">
+        <label>Size:</label>
+        <input type="range" min="10" max="36" value="20" oninput="updateFontSize(this.value)">
+      </div>
+      <button class="toolbar-btn" onclick="fitToPage()">Fit</button>
+      <div class="scroll-control">
+        <label>Scroll:</label>
+        <button onclick="adjustScrollSpeed(-1)">&minus;</button>
+        <span id="mobileScrollSpeed">0</span>
+        <button onclick="adjustScrollSpeed(1)">+</button>
+        <button class="scroll-play" onclick="toggleAutoScroll()">&#9654;</button>
+      </div>
+      <div class="scroll-control">
+        <label>Tempo:</label>
+        <button onclick="adjustTempo(-5)">&minus;</button>
+        <span id="mobileTempoDisplay">120</span>
+        <button onclick="adjustTempo(5)">+</button>
+        <label>bpm</label>
       </div>
     </div>
 
@@ -2309,6 +2369,11 @@ let currentPass = 0;
 let chordToPlayIndex = [];
 let chordAnalysis = [];
 
+function toggleMobileSettings() {
+  const panel = document.getElementById('mobileSettingsPanel');
+  panel.classList.toggle('visible');
+}
+
 function setTuning(t) {
   currentTuning = t;
   const isBoth = t === 'BOTH';
@@ -2318,6 +2383,12 @@ function setTuning(t) {
   }
   document.getElementById('chordFormatGroup').style.display = isBoth ? 'none' : '';
   document.getElementById('colsGroup').style.display = isBoth ? 'none' : '';
+  const mobileChordFmt = document.getElementById('mobileChordFormatGroup');
+  if (mobileChordFmt) mobileChordFmt.style.display = isBoth ? 'none' : '';
+
+  document.getElementById('tuningSelect').value = t;
+  const mobileTuning = document.getElementById('mobileTuningSelect');
+  if (mobileTuning) mobileTuning.value = t;
 
   const header = document.getElementById('tuningHeader');
   header.classList.add('visible');
@@ -2337,8 +2408,10 @@ function transposeStep(dir) {
   transposeAmount += dir;
   if (transposeAmount > 6) transposeAmount = -5;
   if (transposeAmount < -5) transposeAmount = 6;
-  document.getElementById('transposeValue').textContent =
-    transposeAmount === 0 ? '0' : (transposeAmount > 0 ? '+' + transposeAmount : '' + transposeAmount);
+  const display = transposeAmount === 0 ? '0' : (transposeAmount > 0 ? '+' + transposeAmount : '' + transposeAmount);
+  document.getElementById('transposeValue').textContent = display;
+  const mt = document.getElementById('mobileTransposeValue');
+  if (mt) mt.textContent = display;
   renderSong();
 }
 
@@ -2351,6 +2424,10 @@ function setLayout(layout) {
   currentLayout = layout;
   document.getElementById('layoutLyricsBtn').classList.toggle('active', layout === 'lyrics');
   document.getElementById('layoutGridBtn').classList.toggle('active', layout === 'grid');
+  const mlb = document.getElementById('mobileLayoutLyricsBtn');
+  const mgb = document.getElementById('mobileLayoutGridBtn');
+  if (mlb) mlb.classList.toggle('active', layout === 'lyrics');
+  if (mgb) mgb.classList.toggle('active', layout === 'grid');
   document.getElementById('gridLyricsLabel').style.display = layout === 'grid' ? '' : 'none';
   renderSong();
 }
@@ -2359,6 +2436,10 @@ function setChordFormat(fmt) {
   currentChordFormat = fmt;
   document.getElementById('chordTextBtn').classList.toggle('active', fmt === 'text');
   document.getElementById('chordChartBtn').classList.toggle('active', fmt === 'chart');
+  const mtb = document.getElementById('mobileChordTextBtn');
+  const mcb = document.getElementById('mobileChordChartBtn');
+  if (mtb) mtb.classList.toggle('active', fmt === 'text');
+  if (mcb) mcb.classList.toggle('active', fmt === 'chart');
   renderSong();
 }
 
@@ -2429,6 +2510,8 @@ function fitToPage() {
 function adjustScrollSpeed(dir) {
   scrollSpeed = Math.max(0, Math.min(10, scrollSpeed + dir));
   document.getElementById('scrollSpeed').textContent = scrollSpeed;
+  const ms = document.getElementById('mobileScrollSpeed');
+  if (ms) ms.textContent = scrollSpeed;
   if (scrollSpeed === 0 && scrollInterval) stopAutoScroll();
 }
 
@@ -2575,6 +2658,8 @@ function startPlayback(startIndex) {
   const btn = document.getElementById('playbackBtn');
   btn.innerHTML = '&#9632;';
   btn.classList.add('playing');
+  const mBtn = document.getElementById('mobilePlayBtn');
+  if (mBtn) { mBtn.innerHTML = '&#9632;'; mBtn.classList.add('playing'); }
   document.getElementById('floatTempo').textContent = playbackBPM;
   document.getElementById('floatPlayback').classList.add('visible');
   const dotsEl = document.getElementById('beatDots');
@@ -2628,6 +2713,8 @@ function stopPlayback() {
   const btn = document.getElementById('playbackBtn');
   btn.innerHTML = '&#9654;';
   btn.classList.remove('playing');
+  const mBtn = document.getElementById('mobilePlayBtn');
+  if (mBtn) { mBtn.innerHTML = '&#9654;'; mBtn.classList.remove('playing'); }
   document.getElementById('floatPlayback').classList.remove('visible');
   document.getElementById('floatChordName').textContent = '--';
 }
@@ -2763,6 +2850,8 @@ function adjustTempo(delta) {
   playbackBPM = Math.max(20, Math.min(300, playbackBPM + delta));
   document.getElementById('tempoDisplay').textContent = playbackBPM;
   document.getElementById('floatTempo').textContent = playbackBPM;
+  const mt = document.getElementById('mobileTempoDisplay');
+  if (mt) mt.textContent = playbackBPM;
   if (playbackTimeout) {
     clearTimeout(playbackTimeout);
     scheduleBeatTick();
