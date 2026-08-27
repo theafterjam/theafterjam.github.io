@@ -1,0 +1,12 @@
+Title: Take Five
+Artist: Paul Desmond
+{time: 5/4}
+{Part A:}
+[Dm:3][Am7:2]     [Dm:3][Am7:2]     [Dm:3][Am7:2]     [Dm:3][Am7:2]
+[Dm:3][Am7:2]     [Dm:3][Am7:2]     [Dm:3][Am7:2]     [Dm:3][Am7:2]
+{Part B:}
+[Bbmaj7:3][Gm6:2]     [Am7:3][Dm7:2]     [Gm7:3][C7:2]     [Fmaj7:5]
+[Bbmaj7:3][Gm6:2]     [Am7:3][Dm7:2]     [Gm7:3][C7:2]     [Em7b5:3][A7b9:2]
+{Part A:}
+[Dm:3][Am7:2]     [Dm:3][Am7:2]     [Dm:3][Am7:2]     [Dm:3][Am7:2]
+[Dm:3][Am7:2]     [Dm:3][Am7:2]     [Dm:3][Am7:2]     [Dm:3][Am7:2] 

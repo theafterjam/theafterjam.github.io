@@ -1,0 +1,31 @@
+{title: Meet me, Midnight}
+{artist: Diane Schuur}
+
+{comment: Intro}
+[D7:8]  x8    [G7:8]  x8     [D6:16]  x16 (bass riff)
+{comment: Verse 1 in D}
+[D6:4]Meet me, [D#dim7:4]midnight. [E7:2]That’s when [A7:2]things get [D6:4]nice.
+[D6:4]My place, [D#dim7:4]midnight. [E7:4]Don’t forget the [A7:4]ice.
+[D7:8]Don’t look for me in the light of the day, [G7:8] I wait till midnight to come out and play.
+[D6:4]Meet me, [D#dim7:4]midnight. [E7:2]That’s my [A7:2]Pari-  [D6:2]dise. [F7:1] [Bb7:1]
+{comment: Verse 2 in Eb}
+[Eb6:4]Meet me, [Edim7:4]midnight. [F7:2]Baby [Bb7:2]be my [Eb6:4]guest.
+[Eb6:4]Make it, [Edim7:4]midnight. [F7:4]You fill in the [Bb7:4]rest.
+[Eb7:8]Some rise at sunrise and think it’s a wow, [Ab7:8]that’s very nice if you’re milking a cow.
+[Eb6:4]Not me, [Edim7:4]midnight. [F7:2]That’s [Bb7:2]when it’s the [Eb6:2]best. [F#7:1](Take [B7:1]it away, babe)
+{comment: Instrumental in E}
+[E6:4] [Fdim7:4] [F#7:2] [B7:2] [E6:4] The coolest time of day is
+[E6:4]midnight. [Fdim7:4] [F#7:4] [B7:4] Meet me at 
+[E7:8]midnight. [A7:8]          My paradise is
+[E6:4]midnight. [Fdim7:4] [F#7:2] [B7:2] [E6:2] So [G7:1]baby, [C7:1]
+{comment: Verse 3 in F}
+[F6:4]Meet me, [F#dim7:4]midnight. [G7:2]That’s my [C7:2]time of [F6:4]night.
+[F6:4]See ya, [F#dim7:4]midnight. [G7:4]Wine and candle[C7:4]light
+[F7:8]Some like to rise at the crack of the dawn. [Bb7:4]I tried it once and the [Bdim7:4]dawn is a yawn
+[F6:4]Meet me, [F#dim7:4]midnight. We’ll [G7:2]start the [C7:2]new day [A7:2]right [D7:2]
+{comment: Outro}
+I [Gm7:2]wait till [G#dim7:2]midnight [Am7:2]rolls [D7:2]along
+And [Gm7:2]when a [G#dim7:2]fella’s [Am7:2]going [D7:2]strong
+[Gm7:2]Oh St [G#dim7:2]Loretta [Am7:2]had it [D7:2]wrong!
+[Gm7:4]Midnight, [C7:4](Break) That’s the name of that [F6:8]song!
+

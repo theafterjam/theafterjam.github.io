@@ -1,0 +1,23 @@
+{title: Girl from Ipanema}
+{artist: Antônio Carlos Jobim}
+{time: 4/4}
+
+{Verse 1}
+[Fmaj7:8]Tall and tan and young and lovely
+The [G7#11:8]girl from Ipanema goes walking
+And [Gm7:4]when she passes, each [Gb7#11:4]one she passes goes [Fmaj7:4]"ah!" [Gb7:4]
+{Verse 2}
+[Fmaj7:8]When she walks she's like a samba that
+[G7#11:8]Swings so cool and sways so gently
+That [Gm7:4]when she passes, each [Gb7#11:4]one she passes goes [Fmaj7:8]"ah!"
+{Bridge}
+[F#maj7:8]Oh, but he watches her [B7:8]sadly
+[F#m7:8]How can he tell her he [D7:8]loves her?
+[Gm7:8]Yes, he would give his heart [Eb7:8]gladly
+But each [Am7:4]day when she walks to the [D7b9:4]sea
+She [Gm7:4]looks straight ahead not at [C7b9:4]he
+{Verse 3}
+[Fmaj7:8]Tall and tan and young and lovely
+The [G7#11:8]girl from Ipanema goes walking
+And [Gm7:4]when she passes he [Gb7#11:4]smiles
+But she doesn't [Fmaj7:4]see [Gb7:4]
