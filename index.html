@@ -2566,15 +2566,24 @@ function getAudioCtx() {
 }
 
 // Unlock audio on first user interaction (required for mobile)
+let audioUnlocked = false;
 function unlockAudio() {
-  getAudioCtx();
+  if (audioUnlocked) return;
+  const ctx = getAudioCtx();
+  const buf = ctx.createBuffer(1, 1, 22050);
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  src.connect(ctx.destination);
+  src.start(0);
+  if (ctx.state === 'suspended') ctx.resume();
+  audioUnlocked = true;
   document.removeEventListener('touchstart', unlockAudio);
   document.removeEventListener('touchend', unlockAudio);
   document.removeEventListener('click', unlockAudio);
 }
-document.addEventListener('touchstart', unlockAudio, { once: true });
-document.addEventListener('touchend', unlockAudio, { once: true });
-document.addEventListener('click', unlockAudio, { once: true });
+document.addEventListener('touchstart', unlockAudio);
+document.addEventListener('touchend', unlockAudio);
+document.addEventListener('click', unlockAudio);
 
 function playClick(accent) {
   if (clickVolume === 0) return;
