@@ -2645,21 +2645,12 @@ function togglePlayback() {
 
 function startPlayback(startIndex) {
   if (playbackElements.length === 0) return;
-  // Force fresh AudioContext on mobile
+  // Ensure AudioContext is created and running (mobile requires this in user gesture)
   if (audioCtx && audioCtx.state === 'closed') audioCtx = null;
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   }
-  audioCtx.resume().then(() => {
-    const osc = audioCtx.createOscillator();
-    const g = audioCtx.createGain();
-    osc.connect(g);
-    g.connect(audioCtx.destination);
-    osc.frequency.value = 440;
-    g.gain.value = 1.0;
-    osc.start(0);
-    osc.stop(audioCtx.currentTime + 0.5);
-  });
+  if (audioCtx.state === 'suspended') audioCtx.resume();
   if (scrollInterval) stopAutoScroll();
   currentPass = 0;
   if (startIndex != null) {
