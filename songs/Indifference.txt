@@ -1,0 +1,39 @@
+{define: G13/G# frets 4 5 0 0}
+{define: Bbmaj13 frets 2 2 3 3}
+{define: Emaj9 frets 1 3 2 2}
+Have you [G:2]tried it yet?[G13/G#:2]
+[Am7:2]"Indiffere[D9:2]nce"
+[Cm7:2]Works [F9:2]wonders for [Bbmaj13:4]pain
+[Dm7b5:2]My [Abdim7:2]doctor explained [Cm7:2]it [Am7:2]astutely
+[G6:2]Said all tender [E9:2]hearts get [Am7:2]acutely [D9:2]inflamed
+[G:2]The evening [G13/G#:2]news upsets
+[Am7:2]"Indifferen[D9:2]ce"
+[Cm7:2]I [F9:2]switch to the [Bbmaj13:4]game
+[Dm7b5:2]The home[Abdim7:2] team may [Cm7:2]lose [Am7:2]absolutely
+[Emaj9:2]But I [F#m9:2]resolutely [B7:2]refuse to [Emaj9:4]complain[E7:4]
+
+[Amaj7:4]I feel [Am6:4]guilty but [Emaj7:4]good[C#9:4]
+Care less than I [F#m7:4]should[B7:4]
+Don't think about [E6:2]thin[Edim7:2]king [F#m7:2]deeper[B7:2]
+[Amaj7:4]I [Am6:4]could worry for [Emaj7:4]sure[C#9:4]
+But what's worry [F#m7:4]for?[B7:4]
+Except to do [E:2]more [E7:2]than [F#m7/C#:2]nothing[F#dim7:2]
+[Emaj7:2]More [E7:2]than [F#m7/C#:2]nothing[D7:2]
+
+[G:2]Better than[G13/G#:2] percocet[Am7:2]
+[D9:2]Indifference
+[Cm7:2]Less [F9:2]fun than [Bbmaj13:4]cocaine
+[Dm7b5:2]But if I [Abdim7:2]consider [Cm7:2]minutely[Am7:2]
+[G6:4]What difference indifference has [A7:4]made:
+I can [G:2]only [G7:2]state [C6:2]half-hearte[Cm6:2]dly
+That [G:2]ever [G7:2]since my doctor [C6:2]started [Cm6:2]me
+On a [G:2]daily dose of [C6:2]apathy[F9:2]
+I [Bm7:4]feel
+I [E7:4]feel...
+
+[Amaj7:4]I feel[Am6:4] empty but [Emaj7:4]good[C#9:4]
+Dream less than I [F#m7:4]should[B7:4]
+Don't dig all this [E6:2]digg[Edim7:2]ing [F#m7:2]deeper[B7:2]
+[Amaj7:4]I [Am6:4]could worry 'bout [Emaj7:4]war[C#9:4]
+But what's worry [F#m7:4]for?[B7:4]
+Except to do [Emaj7:8]more
