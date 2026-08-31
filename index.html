@@ -17,6 +17,8 @@
   .sidebar-header { padding: 16px 18px; background: #1a252f; font-size: 1.1em; font-weight: 700; letter-spacing: 0.5px; }
   .sidebar-actions { padding: 12px; display: flex; gap: 8px; border-bottom: 1px solid #34495e; }
   .sidebar-actions button { flex: 1; padding: 7px; cursor: pointer; border: none; border-radius: 4px; color: #fff; font-size: 0.82em; font-weight: 600; }
+  .btn-new { background: #e67e22; }
+  .btn-new:hover { background: #d35400; }
   .btn-import { background: #3498db; }
   .btn-import:hover { background: #2980b9; }
   .btn-save { background: #27ae60; }
@@ -125,6 +127,11 @@
     resize: none;
   }
   .editor-nav-hint { font-size: 0.7em; color: #888; margin-top: 4px; }
+  .chord-autocomplete { display: none; position: absolute; z-index: 20; background: #fff; border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); max-height: 180px; overflow-y: auto; min-width: 120px; }
+  .chord-autocomplete.visible { display: block; }
+  .chord-autocomplete .ac-item { padding: 4px 10px; cursor: pointer; font-family: 'Consolas', monospace; font-size: 0.85em; }
+  .chord-autocomplete .ac-item:hover, .chord-autocomplete .ac-item.active { background: #d4e6f1; color: #1a5276; }
+  .chord-autocomplete .ac-item .ac-quality { color: #888; }
 
   #output { background: var(--card); padding: 20px; flex-grow: 1; font-size: var(--dynamic-font-size); }
   .song-title-display { font-size: 1.6em; font-weight: bold; margin-bottom: 2px; }
@@ -220,6 +227,7 @@
   <aside class="sidebar">
     <div class="sidebar-header">MY LIBRARY</div>
     <div class="sidebar-actions">
+      <button class="btn-new" onclick="newSong()">New</button>
       <button class="btn-import" onclick="document.getElementById('filePicker').click()">Import</button>
       <button class="btn-save" onclick="saveAsFile()">Save</button>
       <input type="file" id="filePicker" accept=".txt,.pro,.chopro" style="display:none" onchange="handleFileSelect(this)" multiple>
@@ -371,6 +379,7 @@
     <div id="editArea">
       <div class="editor-wrap">
         <div class="editor-highlight" id="editorHighlight"></div>
+        <div class="chord-autocomplete" id="chordAutocomplete"></div>
         <textarea id="chordProInput" spellcheck="false">{title: Strum Along With Me}
 {artist: The After Jam}
 {time: 4/4}
@@ -402,7 +411,7 @@
 [E7b9:4]The after jam never ends
 {end_of_verse}</textarea>
       </div>
-      <div class="editor-nav-hint">Ctrl+&#8594; next chord &nbsp; Ctrl+&#8592; prev chord</div>
+      <div class="editor-nav-hint" id="editorNavHint">Ctrl+&#8594; next chord &nbsp; Ctrl+&#8592; prev chord &nbsp; Ctrl+Shift+&#8594; beat entry mode</div>
     </div>
 
     <div class="tuning-float-header" id="tuningHeader"></div>
@@ -850,10 +859,14 @@ const ChordLibrary = (() => {
     return voicings ? voicings.length : 0;
   }
 
+  function getAllChordNames() {
+    return Object.keys(CHORDS);
+  }
+
   return {
     NOTES_SHARP, NOTES_FLAT, TUNING_LABELS,
     parseChord, transposeChord, getChordFrets,
-    getAllVoicings, getVoicingCount
+    getAllVoicings, getVoicingCount, getAllChordNames
   };
 })();
 
@@ -3055,6 +3068,32 @@ function saveAsFile() {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
+function newSong() {
+  const template = `{title: New Song}
+{artist: }
+{time: 4/4}
+
+{Verse 1:}
+
+{Chorus:}
+
+{Verse 2:}
+`;
+  activeSongId = null;
+  const input = document.getElementById('chordProInput');
+  input.value = template;
+  input.selectionStart = input.selectionEnd = 8;
+  transposeAmount = 0;
+  document.getElementById('transposeValue').textContent = '0';
+  const area = document.getElementById('editArea');
+  area.style.display = 'block';
+  document.getElementById('editToggleBtn').textContent = 'Hide Editor';
+  updateEditorHighlight();
+  renderSong();
+  input.focus();
+  input.setSelectionRange(8, 16);
+}
+
 // --- localStorage ---
 function saveLibrary() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(library)); } catch(e) {}
@@ -3861,13 +3900,20 @@ function updateEditorHighlight() {
   highlight.scrollTop = textarea.scrollTop;
 }
 
-// --- Editor chord navigation (Ctrl+Arrow) ---
+// --- Editor chord navigation (Ctrl+Arrow) and beat entry mode ---
 function getChordPositions(text) {
   const positions = [];
-  const regex = /\[[^\]]+\]/g;
+  const regex = /\[([^\],:]+)(?::(\d+(?:\.\d+)?))?(?:,(\d+))?\]/g;
   let m;
   while ((m = regex.exec(text)) !== null) {
-    positions.push({ start: m.index, end: m.index + m[0].length });
+    positions.push({
+      start: m.index,
+      end: m.index + m[0].length,
+      name: m[1],
+      beats: m[2] || '',
+      voicing: m[3] || '',
+      full: m[0]
+    });
   }
   return positions;
 }
@@ -3876,20 +3922,457 @@ function navigateChord(textarea, direction) {
   const pos = textarea.selectionStart;
   const chords = getChordPositions(textarea.value);
   if (!chords.length) return;
-
+  const curIdx = chords.findIndex(ch => pos >= ch.start && pos <= ch.end);
+  let target;
   if (direction > 0) {
-    for (const ch of chords) {
-      if (ch.start > pos) { textarea.selectionStart = textarea.selectionEnd = ch.start; return; }
-    }
-    textarea.selectionStart = textarea.selectionEnd = chords[0].start;
+    const searchFrom = curIdx >= 0 ? curIdx + 1 : chords.findIndex(ch => ch.start > pos);
+    target = searchFrom >= 0 && searchFrom < chords.length ? chords[searchFrom] : chords[0];
   } else {
-    for (let i = chords.length - 1; i >= 0; i--) {
-      if (chords[i].start < pos) { textarea.selectionStart = textarea.selectionEnd = chords[i].start; return; }
+    const searchFrom = curIdx >= 0 ? curIdx - 1 : chords.length - 1;
+    if (searchFrom >= 0) {
+      target = chords[searchFrom];
+    } else {
+      target = chords[chords.length - 1];
     }
-    textarea.selectionStart = textarea.selectionEnd = chords[chords.length - 1].start;
+  }
+  textarea.selectionStart = textarea.selectionEnd = target.end - 1;
+}
+
+let beatEntryMode = false;
+let lastBeatValue = '4';
+
+function findChordAtCursor(textarea) {
+  const pos = textarea.selectionStart;
+  const chords = getChordPositions(textarea.value);
+  return chords.find(ch => pos >= ch.start && pos <= ch.end) || null;
+}
+
+function getLineChords(text, chords) {
+  const lines = [];
+  let lineStart = 0;
+  const lineBreaks = [];
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === '\n') { lineBreaks.push({ start: lineStart, end: i }); lineStart = i + 1; }
+  }
+  lineBreaks.push({ start: lineStart, end: text.length });
+  for (const lb of lineBreaks) {
+    const lineChords = chords.filter(ch => ch.start >= lb.start && ch.end <= lb.end);
+    if (lineChords.length > 0) lines.push(lineChords);
+  }
+  return lines;
+}
+
+function predictBeat(textarea, targetChord) {
+  const text = textarea.value;
+  const chords = getChordPositions(text);
+  const lines = getLineChords(text, chords);
+  const targetLine = lines.find(lc => lc.some(ch => ch.start === targetChord.start));
+  if (!targetLine) return lastBeatValue;
+  const posInLine = targetLine.findIndex(ch => ch.start === targetChord.start);
+
+  // Priority 1: same line has completed beats — use matching position pattern
+  const lineBeats = targetLine.map(ch => ch.beats);
+  const hasBeats = lineBeats.filter(b => b);
+  if (hasBeats.length > 0 && hasBeats.length < targetLine.length) {
+    if (posInLine > 0 && targetLine[posInLine - 1].beats) return targetLine[posInLine - 1].beats;
+    return hasBeats[0];
+  }
+
+  // Priority 2: find a completed line with same chord count
+  for (const line of lines) {
+    if (line === targetLine) continue;
+    if (line.length === targetLine.length && line.every(ch => ch.beats)) {
+      return line[posInLine]?.beats || line[0].beats;
+    }
+  }
+
+  // Priority 3: time signature math
+  const timeMatch = text.match(/\{time:\s*(\d+)\/\d+\}/);
+  if (timeMatch) {
+    const beatsPerMeasure = parseInt(timeMatch[1]);
+    const chordsOnLine = targetLine.length;
+    if (beatsPerMeasure % chordsOnLine === 0) {
+      return String(beatsPerMeasure / chordsOnLine);
+    }
+  }
+
+  return lastBeatValue;
+}
+
+function enterBeatMode(textarea, direction) {
+  beatEntryMode = true;
+  const pos = textarea.selectionStart;
+  const chords = getChordPositions(textarea.value);
+  if (!chords.length) return;
+  let target;
+  const current = chords.find(ch => pos >= ch.start && pos <= ch.end);
+  if (current && direction === 0) {
+    target = current;
+  } else if (direction > 0) {
+    target = (current
+      ? chords.find(ch => ch.start > current.start)
+      : chords.find(ch => ch.start > pos)) || chords[0];
+  } else {
+    const ref = current ? current.start : pos;
+    for (let i = chords.length - 1; i >= 0; i--) {
+      if (chords[i].start < ref) { target = chords[i]; break; }
+    }
+    if (!target) target = chords[chords.length - 1];
+  }
+  if (target.beats) {
+    lastBeatValue = target.beats;
+    const beatStart = target.start + 1 + target.name.length + 1;
+    const beatEnd = beatStart + target.beats.length;
+    textarea.selectionStart = beatStart;
+    textarea.selectionEnd = beatEnd;
+  } else {
+    const predicted = predictBeat(textarea, target);
+    const insertPos = target.start + 1 + target.name.length;
+    const text = textarea.value;
+    textarea.value = text.substring(0, insertPos) + ':' + predicted + text.substring(insertPos);
+    textarea.selectionStart = insertPos + 1;
+    textarea.selectionEnd = insertPos + 1 + predicted.length;
+    lastBeatValue = predicted;
+    updateEditorHighlight();
+    renderSong();
+  }
+  updateBeatModeHint();
+}
+
+function advanceBeat(textarea) {
+  const current = findChordAtCursor(textarea);
+  if (current) {
+    const freshCurrent = getChordPositions(textarea.value).find(c => c.start === current.start);
+    if (freshCurrent && freshCurrent.beats) lastBeatValue = freshCurrent.beats;
+  }
+  const chords = getChordPositions(textarea.value);
+  const idx = chords.findIndex(ch => ch.start === (current ? current.start : -1));
+  if (idx >= 0 && idx < chords.length - 1) {
+    const next = chords[idx + 1];
+    if (next.beats) {
+      const beatStart = next.start + 1 + next.name.length + 1;
+      const beatEnd = beatStart + next.beats.length;
+      textarea.selectionStart = beatStart;
+      textarea.selectionEnd = beatEnd;
+    } else {
+      const predicted = predictBeat(textarea, next);
+      const insertPos = next.start + 1 + next.name.length;
+      const text = textarea.value;
+      textarea.value = text.substring(0, insertPos) + ':' + predicted + text.substring(insertPos);
+      const beatStart = insertPos + 1;
+      textarea.selectionStart = beatStart;
+      textarea.selectionEnd = beatStart + predicted.length;
+      lastBeatValue = predicted;
+      updateEditorHighlight();
+      renderSong();
+    }
+  } else {
+    beatEntryMode = false;
+    updateBeatModeHint();
   }
 }
 
+// --- Chord auto-complete ---
+let acChordList = null;
+let acSelectedIndex = -1;
+let acOpen = false;
+
+function buildChordList() {
+  if (acChordList) return acChordList;
+  const base = ChordLibrary.getAllChordNames();
+  const enharmonic = { 'Db': 'C#', 'Eb': 'D#', 'Gb': 'F#', 'Ab': 'G#', 'Bb': 'A#', 'C#': 'Db', 'D#': 'Eb', 'F#': 'Gb', 'G#': 'Ab', 'A#': 'Bb' };
+  const extras = new Set();
+  for (const name of base) {
+    const parsed = ChordLibrary.parseChord(name);
+    if (parsed && enharmonic[parsed.root]) {
+      extras.add(enharmonic[parsed.root] + parsed.quality);
+    }
+  }
+  acChordList = base.concat([...extras]).sort((a, b) => {
+    const pa = ChordLibrary.parseChord(a), pb = ChordLibrary.parseChord(b);
+    if (!pa || !pb) return 0;
+    return pa.rootIndex - pb.rootIndex || a.length - b.length;
+  });
+  return acChordList;
+}
+
+function getEditorBracketContext(textarea) {
+  const pos = textarea.selectionStart;
+  const text = textarea.value;
+  let bracketStart = -1;
+  for (let i = pos - 1; i >= 0; i--) {
+    if (text[i] === '[') { bracketStart = i; break; }
+    if (text[i] === ']' || text[i] === '\n') break;
+  }
+  if (bracketStart < 0) return null;
+  const typed = text.substring(bracketStart + 1, pos);
+  if (typed.includes(':') || typed.includes(',')) return null;
+  return { bracketStart, typed };
+}
+
+function getSongChords() {
+  const text = document.getElementById('chordProInput').value;
+  const counts = {};
+  const regex = /\[([^\],:]+)/g;
+  let m;
+  while ((m = regex.exec(text)) !== null) {
+    const name = m[1];
+    counts[name] = (counts[name] || 0) + 1;
+  }
+  return counts;
+}
+
+function filterChords(typed) {
+  const list = buildChordList();
+  const songChords = getSongChords();
+  const inSong = Object.keys(songChords);
+  if (!typed) {
+    const used = inSong.sort((a, b) => songChords[b] - songChords[a]).slice(0, 10);
+    const rest = list.filter(ch => !songChords[ch]).slice(0, 20 - used.length);
+    return used.concat(rest);
+  }
+  const lower = typed.toLowerCase();
+  const exact = [];
+  const usedMatch = [];
+  const otherMatch = [];
+  for (const ch of list) {
+    const cl = ch.toLowerCase();
+    if (cl === lower) { exact.unshift(ch); continue; }
+    if (cl.startsWith(lower)) {
+      if (songChords[ch]) usedMatch.push(ch);
+      else otherMatch.push(ch);
+    }
+  }
+  usedMatch.sort((a, b) => songChords[b] - songChords[a]);
+  return exact.concat(usedMatch, otherMatch).slice(0, 15);
+}
+
+function positionAutocomplete(textarea) {
+  const ac = document.getElementById('chordAutocomplete');
+  const pos = textarea.selectionStart;
+  const text = textarea.value.substring(0, pos);
+  const lines = text.split('\n');
+  const lineNum = lines.length - 1;
+  const colNum = lines[lineNum].length;
+  const style = getComputedStyle(textarea);
+  const lineHeight = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.5;
+  const paddingTop = parseFloat(style.paddingTop);
+  const paddingLeft = parseFloat(style.paddingLeft);
+  const charWidth = parseFloat(style.fontSize) * 0.6;
+  const top = paddingTop + (lineNum + 1) * lineHeight - textarea.scrollTop;
+  const left = paddingLeft + colNum * charWidth;
+  ac.style.top = Math.min(top, textarea.offsetHeight - 20) + 'px';
+  ac.style.left = Math.min(left, textarea.offsetWidth - 140) + 'px';
+}
+
+function renderAutocomplete(matches) {
+  const ac = document.getElementById('chordAutocomplete');
+  if (!matches.length) { hideAutocomplete(); return; }
+  ac.innerHTML = matches.map((ch, i) =>
+    '<div class="ac-item' + (i === acSelectedIndex ? ' active' : '') + '" data-index="' + i + '">' + ch + '</div>'
+  ).join('');
+  ac.classList.add('visible');
+  acOpen = true;
+  const activeEl = ac.querySelector('.ac-item.active');
+  if (activeEl) activeEl.scrollIntoView({ block: 'nearest' });
+}
+
+function hideAutocomplete() {
+  const ac = document.getElementById('chordAutocomplete');
+  ac.classList.remove('visible');
+  ac.innerHTML = '';
+  acOpen = false;
+  acSelectedIndex = -1;
+}
+
+function acceptAutocomplete(textarea, chordName) {
+  const ctx = getEditorBracketContext(textarea);
+  if (!ctx) { hideAutocomplete(); return; }
+  const text = textarea.value;
+  const afterTyped = text.substring(ctx.bracketStart + 1 + ctx.typed.length);
+  const closingIdx = afterTyped.search(/[\]\n]/);
+  if (closingIdx >= 0 && afterTyped[closingIdx] === ']') {
+    const suffix = afterTyped.substring(0, closingIdx);
+    const rest = afterTyped.substring(closingIdx);
+    textarea.value = text.substring(0, ctx.bracketStart + 1) + chordName + suffix + rest;
+  } else {
+    textarea.value = text.substring(0, ctx.bracketStart + 1) + chordName + ']' + afterTyped;
+  }
+  const newPos = ctx.bracketStart + 1 + chordName.length;
+  const newText = textarea.value;
+  const nextClose = newText.indexOf(']', newPos);
+  textarea.selectionStart = textarea.selectionEnd = nextClose >= 0 ? nextClose + 1 : newPos;
+  hideAutocomplete();
+  textarea.dispatchEvent(new Event('input'));
+}
+
+function updateAutocomplete(textarea) {
+  const ctx = getEditorBracketContext(textarea);
+  if (!ctx) { hideAutocomplete(); return; }
+  const matches = filterChords(ctx.typed);
+  acSelectedIndex = matches.length > 0 ? 0 : -1;
+  positionAutocomplete(textarea);
+  renderAutocomplete(matches);
+}
+
+function updateBeatModeHint() {
+  const hint = document.getElementById('editorNavHint');
+  if (!hint) return;
+  if (beatEntryMode) {
+    hint.textContent = 'BEAT MODE: type beat count, Enter = confirm & next, Escape = exit';
+    hint.style.color = '#e67e22';
+  } else {
+    hint.innerHTML = 'Ctrl+→ next chord   Ctrl+← prev chord   Ctrl+Shift+→ beat entry mode';
+    hint.style.color = '#888';
+  }
+}
+
+
+// --- Smart Paste: convert chords-above-lyrics format ---
+function isChordToken(token) {
+  if (!token || token.length > 12) return false;
+  const cleaned = token.replace(/[()]/g, '');
+  if (!cleaned) return false;
+  const slash = cleaned.indexOf('/');
+  const main = slash > 0 ? cleaned.substring(0, slash) : cleaned;
+  return ChordLibrary.parseChord(main) !== null;
+}
+
+function isChordLine(line) {
+  const trimmed = line.trim();
+  if (!trimmed) return false;
+  const tokens = trimmed.split(/\s+/);
+  if (tokens.length === 0) return false;
+  const chordCount = tokens.filter(t => isChordToken(t)).length;
+  return chordCount / tokens.length >= 0.6 && chordCount >= 1;
+}
+
+function isSectionHeader(line) {
+  const trimmed = line.trim().replace(/[:\-]+$/, '').trim();
+  const patterns = /^(intro|verse|chorus|bridge|outro|coda|pre[- ]?chorus|interlude|solo|instrumental|tag|ending|refrain|hook|vamp)(\s*\d+)?$/i;
+  return patterns.test(trimmed);
+}
+
+function extractSectionName(line) {
+  return line.trim().replace(/[:\-]+$/, '').trim();
+}
+
+function mergeChordLineWithLyrics(chordLine, lyricLine) {
+  const chordRegex = /\S+/g;
+  const chords = [];
+  let m;
+  while ((m = chordRegex.exec(chordLine)) !== null) {
+    chords.push({ name: m[0].replace(/[().,:;]+$/, '').replace(/[()]/g, ''), col: m.index });
+  }
+  if (!lyricLine || !lyricLine.trim()) {
+    return chords.map(c => '[' + c.name + ']').join(' ');
+  }
+  // Snap mid-word chord positions to word start
+  for (let i = 0; i < chords.length; i++) {
+    const col = chords[i].col;
+    if (col > 0 && col < lyricLine.length && lyricLine[col] !== ' ' && lyricLine[col - 1] !== ' ') {
+      let wordStart = col;
+      while (wordStart > 0 && lyricLine[wordStart - 1] !== ' ') wordStart--;
+      const prevCol = i > 0 ? chords[i - 1].col : -1;
+      if (wordStart > prevCol) chords[i].col = wordStart;
+    }
+  }
+  let result = '';
+  let lyricPos = 0;
+  for (let i = 0; i < chords.length; i++) {
+    const col = chords[i].col;
+    const nextCol = i + 1 < chords.length ? chords[i + 1].col : lyricLine.length;
+    if (col > lyricPos) {
+      const leading = lyricLine.substring(lyricPos, col).trimEnd();
+      if (leading) {
+        result += leading;
+        if (!leading.endsWith(' ')) result += ' ';
+      }
+    }
+    result += '[' + chords[i].name + ']';
+    const lyricSlice = lyricLine.substring(col, nextCol);
+    if (lyricSlice.trim()) {
+      result += i < chords.length - 1 ? lyricSlice.replace(/\s+$/, ' ') : lyricSlice.trimEnd();
+    } else if (i < chords.length - 1) {
+      result += ' ';
+    }
+    lyricPos = nextCol;
+  }
+  const trailing = lyricLine.substring(lyricPos).trim();
+  if (trailing) result += ' ' + trailing;
+  return result;
+}
+
+function smartPasteConvert(text) {
+  const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+  const output = [];
+  let hasTitle = false, hasArtist = false;
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      output.push('');
+      i++;
+      continue;
+    }
+
+    if (!hasTitle && i < 3 && !isChordLine(trimmed) && !isSectionHeader(trimmed) && trimmed.length < 60) {
+      output.push('{title: ' + trimmed + '}');
+      hasTitle = true;
+      i++;
+      if (i < lines.length) {
+        const next = lines[i].trim();
+        if (next && !isChordLine(next) && !isSectionHeader(next) && next.length < 60) {
+          output.push('{artist: ' + next + '}');
+          hasArtist = true;
+          i++;
+        }
+      }
+      continue;
+    }
+
+    if (isSectionHeader(trimmed)) {
+      output.push('{' + extractSectionName(trimmed) + ':}');
+      i++;
+      continue;
+    }
+
+    if (isChordLine(line)) {
+      const nextLine = i + 1 < lines.length ? lines[i + 1] : '';
+      const nextIsChord = isChordLine(nextLine);
+      const nextIsEmpty = !nextLine.trim();
+      const nextIsSection = isSectionHeader(nextLine.trim());
+      if (!nextIsChord && !nextIsEmpty && !nextIsSection && nextLine.trim()) {
+        output.push(mergeChordLineWithLyrics(line, nextLine));
+        i += 2;
+      } else {
+        output.push(mergeChordLineWithLyrics(line, ''));
+        i++;
+      }
+      continue;
+    }
+
+    output.push(line);
+    i++;
+  }
+  return output.join('\n');
+}
+
+function detectChordsAboveLyrics(text) {
+  const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+  let chordLineCount = 0;
+  let totalNonEmpty = 0;
+  for (const line of lines) {
+    if (line.trim()) {
+      totalNonEmpty++;
+      if (isChordLine(line)) chordLineCount++;
+    }
+  }
+  return totalNonEmpty >= 2 && chordLineCount >= 1 && chordLineCount / totalNonEmpty >= 0.15;
+}
 
 // --- Init ---
 const chordInput = document.getElementById('chordProInput');
@@ -3899,19 +4382,95 @@ chordInput.addEventListener('input', () => {
   renderSong();
   clearTimeout(syncTimeout);
   syncTimeout = setTimeout(syncEditorToLibrary, 500);
+  updateAutocomplete(chordInput);
 });
 
 chordInput.addEventListener('scroll', () => {
   document.getElementById('editorHighlight').scrollTop = chordInput.scrollTop;
+  if (acOpen) hideAutocomplete();
+});
+
+document.getElementById('chordAutocomplete').addEventListener('mousedown', (e) => {
+  e.preventDefault();
+  const item = e.target.closest('.ac-item');
+  if (!item) return;
+  const matches = filterChords(getEditorBracketContext(chordInput)?.typed || '');
+  const idx = parseInt(item.dataset.index);
+  if (idx >= 0 && idx < matches.length) acceptAutocomplete(chordInput, matches[idx]);
 });
 
 chordInput.addEventListener('keydown', (e) => {
-  if (e.ctrlKey && e.key === 'ArrowRight') {
+  if (acOpen) {
+    const ac = document.getElementById('chordAutocomplete');
+    const items = ac.querySelectorAll('.ac-item');
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      acSelectedIndex = Math.min(acSelectedIndex + 1, items.length - 1);
+      renderAutocomplete(filterChords(getEditorBracketContext(chordInput)?.typed || ''));
+      return;
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      acSelectedIndex = Math.max(acSelectedIndex - 1, 0);
+      renderAutocomplete(filterChords(getEditorBracketContext(chordInput)?.typed || ''));
+      return;
+    }
+    if (e.key === 'Enter' || e.key === 'Tab') {
+      e.preventDefault();
+      if (acSelectedIndex >= 0 && acSelectedIndex < items.length) {
+        const matches = filterChords(getEditorBracketContext(chordInput)?.typed || '');
+        acceptAutocomplete(chordInput, matches[acSelectedIndex]);
+      }
+      return;
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      hideAutocomplete();
+      return;
+    }
+  }
+  if (beatEntryMode) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const sel = chordInput.value.substring(chordInput.selectionStart, chordInput.selectionEnd);
+      if (sel) lastBeatValue = sel;
+      advanceBeat(chordInput);
+      return;
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      beatEntryMode = false;
+      updateBeatModeHint();
+      return;
+    }
+  }
+  if (e.ctrlKey && e.shiftKey && e.key === 'ArrowRight') {
+    e.preventDefault();
+    enterBeatMode(chordInput, beatEntryMode ? 1 : 0);
+  } else if (e.ctrlKey && e.shiftKey && e.key === 'ArrowLeft') {
+    e.preventDefault();
+    enterBeatMode(chordInput, -1);
+  } else if (e.ctrlKey && !e.shiftKey && e.key === 'ArrowRight') {
     e.preventDefault();
     navigateChord(chordInput, 1);
-  } else if (e.ctrlKey && e.key === 'ArrowLeft') {
+  } else if (e.ctrlKey && !e.shiftKey && e.key === 'ArrowLeft') {
     e.preventDefault();
     navigateChord(chordInput, -1);
+  }
+});
+
+chordInput.addEventListener('paste', (e) => {
+  const pasted = (e.clipboardData || window.clipboardData).getData('text');
+  if (pasted && detectChordsAboveLyrics(pasted) && !pasted.includes('[')) {
+    e.preventDefault();
+    const converted = smartPasteConvert(pasted);
+    const start = chordInput.selectionStart;
+    const end = chordInput.selectionEnd;
+    const before = chordInput.value.substring(0, start);
+    const after = chordInput.value.substring(end);
+    chordInput.value = before + converted + after;
+    chordInput.selectionStart = chordInput.selectionEnd = start + converted.length;
+    chordInput.dispatchEvent(new Event('input'));
   }
 });
 
