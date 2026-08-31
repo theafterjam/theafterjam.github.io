@@ -3328,7 +3328,7 @@ function renderPane(song, semitones, useFlats, container, tuning) {
       for (const c of usedChords) {
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svg.classList.add('chord-diagram');
-        const frets = song.defines[c.name] || ChordLibrary.getChordFrets(c.name, tuning, c.voicingIndex);
+        const frets = (tuning === 'GCEA' && song.defines[c.name]) || ChordLibrary.getChordFrets(c.name, tuning, c.voicingIndex);
         const label = c.voicingIndex > 0 ? c.name + ' (v' + c.voicingIndex + ')' : c.name;
         ChordRenderer.render(svg, label, frets, tuning);
         strip.appendChild(svg);
@@ -3599,7 +3599,7 @@ function renderLyrics(song, semitones, useFlats, output) {
           chartLabel.textContent = transposed;
           pair.appendChild(chartLabel);
           const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-          const frets = song.defines[transposed] || ChordLibrary.getChordFrets(transposed, currentTuning, seg.voicingIndex);
+          const frets = (currentTuning === 'GCEA' && song.defines[transposed]) || ChordLibrary.getChordFrets(transposed, currentTuning, seg.voicingIndex);
           ChordRenderer.render(svg, transposed, frets, currentTuning, { hideLabel: true });
           svg.classList.add('chord-inline-diagram');
           pair.appendChild(svg);
@@ -3843,7 +3843,7 @@ function renderGrid(song, semitones, useFlats, output) {
           label.textContent = ch.name;
           cell.appendChild(label);
           const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-          const frets = song.defines[ch.name] || ChordLibrary.getChordFrets(ch.name, currentTuning, ch.voicingIndex || 0);
+          const frets = (currentTuning === 'GCEA' && song.defines[ch.name]) || ChordLibrary.getChordFrets(ch.name, currentTuning, ch.voicingIndex || 0);
           ChordRenderer.render(svg, ch.name, frets, currentTuning, { hideLabel: true });
           svg.classList.add('ireal-cell-diagram');
           cell.appendChild(svg);
