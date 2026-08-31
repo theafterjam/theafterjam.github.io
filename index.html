@@ -3207,7 +3207,7 @@ function parseChordPro(text) {
     }
 
     const sectionMatch = line.match(/^\{(.+?)\}$/);
-    if (sectionMatch) {
+    if (sectionMatch && !sectionMatch[1].match(/^define:/i)) {
       result.lines.push({ type: 'directive', cmd: 'section', val: sectionMatch[1].replace(/:$/, '') });
       continue;
     }

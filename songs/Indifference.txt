@@ -1,3 +1,5 @@
+{title: Indifference}
+{artist: Vilray}
 {define: G13/G# frets 4 5 0 0}
 {define: Bbmaj13 frets 2 2 3 3}
 {define: Emaj9 frets 1 3 2 2}
