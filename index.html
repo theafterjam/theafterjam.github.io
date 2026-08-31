@@ -4411,13 +4411,16 @@ function isChordLine(line) {
 }
 
 function isSectionHeader(line) {
-  const trimmed = line.trim().replace(/[:\-]+$/, '').trim();
+  let trimmed = line.trim().replace(/[:\-]+$/, '').trim();
+  if (trimmed.startsWith('[') && trimmed.endsWith(']')) trimmed = trimmed.slice(1, -1).trim();
   const patterns = /^(intro|verse|chorus|bridge|outro|coda|pre[- ]?chorus|interlude|solo|instrumental|tag|ending|refrain|hook|vamp)(\s*\d+)?$/i;
   return patterns.test(trimmed);
 }
 
 function extractSectionName(line) {
-  return line.trim().replace(/[:\-]+$/, '').trim();
+  let trimmed = line.trim().replace(/[:\-]+$/, '').trim();
+  if (trimmed.startsWith('[') && trimmed.endsWith(']')) trimmed = trimmed.slice(1, -1).trim();
+  return trimmed;
 }
 
 function mergeChordLineWithLyrics(chordLine, lyricLine) {
@@ -4522,6 +4525,17 @@ function smartPasteConvert(text) {
     i++;
   }
   return output.join('\n');
+}
+
+function hasChordProBrackets(text) {
+  const matches = text.match(/\[([^\]]+)\]/g);
+  if (!matches) return false;
+  for (const m of matches) {
+    const inner = m.slice(1, -1).trim();
+    if (isSectionHeader('[' + inner + ']')) continue;
+    if (ChordLibrary.parseChord(inner.split(/[:, ]/)[0])) return true;
+  }
+  return false;
 }
 
 function detectChordsAboveLyrics(text) {
@@ -4684,7 +4698,7 @@ chordInput.addEventListener('keydown', (e) => {
 
 chordInput.addEventListener('paste', (e) => {
   const pasted = (e.clipboardData || window.clipboardData).getData('text');
-  if (pasted && detectChordsAboveLyrics(pasted) && !pasted.includes('[')) {
+  if (pasted && detectChordsAboveLyrics(pasted) && !hasChordProBrackets(pasted)) {
     e.preventDefault();
     const converted = smartPasteConvert(pasted);
     const start = chordInput.selectionStart;
