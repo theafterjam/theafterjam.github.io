@@ -1,31 +1,27 @@
 {title: Cheek To Cheek}
 {artist: Irving Berlin}
 {time: 4/4}
-{Verse:}
+{Verse 1:}
 [Gmaj7:2]Heaven,[Abdim7:2] [Am7:2] [D7:2]I'm in [Gmaj7:2]Heaven..[Abdim7:2].. [Am7:2] [D7:2]
 and my [Gmaj7:2]heart beats [Am7:2]so that [Bbdim7:2]I can [Bm7:2]hardly [F7#11:4]speak.[E7:2]
 [A7:2]And I [D7:2]seem to [Am7:2]find the [Bm7:2]happin[C7:2]ess I [F7#11:4]seek...[E7:4]
 when we're [Am7:4]out together [D7:4]dancing cheek to [Bm7:2]cheek.[E7:2][Am7:2][D7:2]
 
-{Verse:}
+{Verse 2:}
 [Gmaj7:2]Mmm, Heaven, [Abdim7:2].... [Am7:2] [D7:2]I'm in [Gmaj7:2]Heaven..[Abdim7:2]. [Am7:2] [D7:2]and the [Gmaj7:2]cares that
 [Am7:2]hung [Bbdim7:2]around me [Bm7:2]through the [F7#11:4]week..[E7:2]
 [A7:2]seem to [D7:2]vanish [Am7:2]like a [Bm7:2]gambler's [C7:2]lucky [F7#11:4]streak..[E7:4]
 when we're [Am7:4]out together [D7:4]dancing cheek to [G6:8]cheek.
 
 {Bridge:}
-Oh, I [Am7:2]love to [D7:2]climb a [G6:2]mountain [E7:2] 
-and to [Am7:2]reach the [D7:2]highest [G6:2]peak. [E7:2]
-But it [Am7:2]doesn't [D7:2]thrill me [G6:2]half as [E7:2]much as [Am7:2]dancin'
-[D7:2]cheek to [G6:4]cheek.
-Oh, I [Am7:2]love to [D7:2]go out [G6:2]fishin',[E7:2]
-in a [Am7:2]river [D7:2]or a [G6:2]creek.[E7:2]
-But I [Am7:2]don't [D7:2]enjoy it [G6:2]half as [E7:2]much as [Am7:2]dancin' [D7:2]cheek
-to [G6:4]cheek.
-[Gm7:4]Dance with [Gm7:4]me..I want my [Bbm7:4]arms about [Eb7:4]you..the [Am7b5:4]charms
-about you [D7:2][Ebdim7:2] will [Em7:4]carry me [Am7:2]through..[D7:2]to..
-
-{Verse:}
+Oh, I [Am7:2]love to [D7:2]climb a [G6:2]mountain [E7:2] and to [Am7:2]reach the [D7:2]highest [G6:2]peak. [E7:2]
+But it [Am7:2]doesn't [D7:2]thrill me [G6:2]half as [E7:2]much as [Am7:2]dancin'[D7:2]cheek to [G6:4]cheek.
+Oh, I [Am7:2]love to [D7:2]go out [G6:2]fishin',[E7:2] in a [Am7:2]river [D7:2]or a [G6:2]creek.[E7:2]
+But I [Am7:2]don't [D7:2]enjoy it [G6:2]half as [E7:2]much as [Am7:2]dancin' [D7:2]cheek to [G6:4]cheek.
+{Interlude:}
+[Gm7:4]Dance with [Gm7:4]me..I want my [Bbm7:4]arms about [Eb7:4]you..
+the [Am7b5:4]charms about you [D7:2][Ebdim7:2] will [Em7:4]carry me [Am7:2]through..[D7:2]to..
+{Verse 3:}
 [Gmaj7:2]Heaven,[Abdim7:2] [Am7:2] [D7:2]I'm in [Gmaj7:2]Heaven..[Abdim7:2].. [Am7:2] [D7:2]
 and my [Gmaj7:2]heart beats [Am7:2]so that [Bbdim7:2]I can [Bm7:2]hardly [F7#11:4]speak.[E7:2]
 [A7:2]And I [D7:2]seem to [Am7:2]find the [Bm7:2]happin[C7:2]ess I [F7#11:4]seek...[E7:4]

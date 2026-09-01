@@ -2,22 +2,14 @@
 {artist: Harold Arlen}
 {time: 4/4}
 {Verse 1:}
-[Cmaj7:2]Say it's [A7:2]only a [Dm7:2]paper [G7:2]moon
-[Dm7:2]Sailing [G7:2]over a [Cmaj7:2]cardboard [Dm7:1]sea [G7:1]
-[Gm7:2]But it [C7:2]wouldn't be [Fmaj7:2]make-[Dm7b5:2]believe
-If [G7:4]you believed in [C6:2]me [Dm7:1][G7:1]
+[Cmaj7:2]Say it's [A7:2]only a [Dm7:2]paper [G7:2]moon [Dm7:2]Sailing [G7:2]over a [Cmaj7:2]cardboard [Dm7:1]sea [G7:1]
+[Gm7:2]But it [C7:2]wouldn't be [Fmaj7:2]make-[Dm7b5:2]believe If [G7:4]you believed in [C6:2]me [Dm7:1][G7:1]
 {Verse 2:}
-[Cmaj7:2]Yes, it's [A7:2]only a [Dm7:2]canvas [G7:2]sky
-[Dm7:2]Hanging [G7:2]over a [Cmaj7:2]muslin [Dm7:1]tree [G7:1]
-[Gm7:2]But it [C7:2]wouldn't be [Fmaj7:2]make-[Dm7b5:2]believe
-If [G7:4]you believed in [C6:2]me [C7:2]
+[Cmaj7:2]Yes, it's [A7:2]only a [Dm7:2]canvas [G7:2]sky [Dm7:2]Hanging [G7:2]over a [Cmaj7:2]muslin [Dm7:1]tree [G7:1]
+[Gm7:2]But it [C7:2]wouldn't be [Fmaj7:2]make-[Dm7b5:2]believe If [G7:4]you believed in [C6:2]me [C7:2]
 {Bridge:}
-[Fmaj7:2]Without [F#dim7:2]your [Cmaj7:2]love [A7:2]
-It's a [Dm7:2]honky[G7:2]-tonk [C6:2]parade [C7:2]
-[Fmaj7:2]Without [F#dim7:2]your [Cmaj7:4]love
-It's a [Em7b5:2]melody [A7b9:2]played in a [Dm7:2]penny [G7:2]arcade
+[Fmaj7:2]Without [F#dim7:2]your [Cmaj7:2]love [A7:2] It's a [Dm7:2]honky[G7:2]-tonk [C6:2]parade [C7:2]
+[Fmaj7:2]Without [F#dim7:2]your [Cmaj7:4]love It's a [Em7b5:2]melody [A7b9:2]played in a [Dm7:2]penny [G7:2]arcade
 {Verse 3:}
-[Cmaj7:2]It's a [A7:2]barnum and [Dm7:2]bailey [G7:2]world
-[Dm7:2]Just as [G7:2]phony as [Cmaj7:2]it can [Dm7:1]be [G7:1]
-[Gm7:2]But it [C7:2]wouldn't be [Fmaj7:2]make-[Dm7b5:2]believe
-If [G7:4]you believed in [C6:2]me [Dm7:1][G7:1]
+[Cmaj7:2]It's a [A7:2]barnum and [Dm7:2]bailey [G7:2]world [Dm7:2]Just as [G7:2]phony as [Cmaj7:2]it can [Dm7:1]be [G7:1]
+[Gm7:2]But it [C7:2]wouldn't be [Fmaj7:2]make-[Dm7b5:2]believe If [G7:4]you believed in [C6:2]me [Dm7:1][G7:1]
