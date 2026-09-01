@@ -1,0 +1,34 @@
+{define: Esus2 frets 0 4 2 2}
+Title: Little Sparrow
+Artist: Dolly Parton
+
+{Intro:}
+Little [NC:4]sparrow, little [NC:4]sparrow. Precious [NC:4]fragile little [NC:4]thing
+Little [NC:4]sparrow, little [NC:4]sparrow. Flies so [NC:4]high and feels no [Bm:16]pain
+ 
+{Verse 1:}
+All ye [Bm:4]maidens heed my [Bm:4]warning. Never [Em:4]trust the hearts of [Bm:4]men.
+They will [Em:4]crush you like a [Bm:4]sparrow. Leaving [Em:4]you to never [Bm:4]mend.
+They will [Bm:8]vow to always love you. Swear no [Em:4]love but yours will [Bm:4]do.
+Then they'll [Em:4]leave you for [Bm:4]another. Break your [Em:2]little [F#m:2]heart in [Bm:4]two. 
+{Chorus:}
+Little [Bm:4]sparrow, little [Bm:4]sparrow. Precious [Em:4]fragile little [Bm:4]thing.
+Little [Bm:4]sparrow, little [Bm:4]sparrow. Flies so [Em:2]high [F#m:2] and feels no [Bm:4]pain. 
+{Fiddle/Musical Interlude:}
+[D:4] [A:4] [Bm:4] [G:4]
+[D:4] [A:4] [G:2] [A:2] [Bm:8]
+ 
+{Verse 2:}
+If I [Bm:4]were a little [Bm:4]sparrow. O'er these [Em:4]mountains I would [Bm:4]fly
+I would [Em:4]find him, I would [Bm:4]find him. Look in[Em:2]to [F#m:2]his lying [Bm:4]eyes
+I would [Bm:4]flutter all [Bm:4]around him. On my [Em:4]little sparrow [Bm:4]wings
+I would [Em:4]ask him, I would [Bm:4]ask him. Why he [Em:4]let me love in [Bm:4]vain
+I am [Bm:4]not a little [Bm:4]sparrow. I am [Esus2:4]just the broken [Bm:4]dream
+Of a [Esus2:4]cold false-hearted [Bm:4]lover. And his [Em:2]evil [F#m:2]cunning [Bm:4]scheme
+{Chorus:}
+Little [Bm:4]sparrow, little [Bm:4]sparrow. Precious [Em:4]fragile little [D:2]thing. [A/C#:2]
+Little [Bm:4]sparrow, little [Bm:4]sparrow. Flies so [Em:2]high [F#m:2] and feels no [Bm:4]pain.  
+{Outro:}
+All ye [NC:4]maidens fair and [Bm:4]tender. Never [Em:4]trust the hearts of [Bm:4]men
+They will [Em:4]crush you like a [Bm:4]sparrow. Leaving [NC:4]you to never [NC:4]mend 
+Little [NC:4]sparrow, little [NC:4]sparrow. Oh, the [NC:4]sorrow never [Bm:32]ends

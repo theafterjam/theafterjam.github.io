@@ -3913,6 +3913,7 @@ function getCustomDefines(text) {
 }
 
 function isChordDefined(name, defines) {
+  if (name === 'NC' || name === 'N.C.') return true;
   if (defines[name]) return true;
   return ChordLibrary.getChordFrets(name, currentTuning, 0) !== null;
 }
