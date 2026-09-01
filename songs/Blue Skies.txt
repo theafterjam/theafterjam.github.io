@@ -3,22 +3,14 @@
 {time: 4/4}
 {define: AmMaj7 frets 1 0 0 0}
 {Verse 1:}
-[Am:4]Blue skies,[AmMaj7:4]
-smiling at [Am7:4]me [Am6:4]
-Nothing but [Cmaj7:2]blue [Am7:2]skies,
-[Dm7:2][G7:2]do I [C6:4]see[Bm7b5:2][E7b9:2]
+[Am:4]Blue skies,[AmMaj7:4] smiling at [Am7:4]me [Am6:4]
+Nothing but [Cmaj7:2]blue [Am7:2]skies, [Dm7:2][G7:2]do I [C6:4]see[Bm7b5:2][E7b9:2]
 {Verse 2:}
-[Am:4]Bluebirds[AmMaj7:4]
-singing a [Am7:4]song[Am6:4]
-Nothing but [Cmaj7:2]bluebirds,[Am7:2]
-[Dm7:2][G7:2]all day [C6:8]long
+[Am:4]Bluebirds[AmMaj7:4] singing a [Am7:4]song[Am6:4]
+Nothing but [Cmaj7:2]bluebirds,[Am7:2] [Dm7:2][G7:2]all day [C6:8]long
 {Bridge:}
-[Cmaj7:4]Never saw the sun [Fm6:2]shining so [Cmaj7:2]bright
-[Fm6:2]Never saw [Cmaj7:2]things [G7:2]going so [C6:2]right
-[Cmaj7:4]Noticing the days [Fm6:2]hurrying [Cmaj7:2]by
-[Fm6:2]When you're in [Cmaj7:2]love, [Bm7b5:2]my how they [E7b9:2]fly 
+[Cmaj7:4]Never saw the sun [Fm6:2]shining so [Cmaj7:2]bright. [Fm6:2]Never saw [Cmaj7:2]things [G7:2]going so [C6:2]right
+[Cmaj7:4]Noticing the days [Fm6:2]hurrying [Cmaj7:2]by. [Fm6:2]When you're in [Cmaj7:2]love, [Bm7b5:2]my how they [E7b9:2]fly 
 {Verse 3:}
-[Am:4]Blue days[AmMaj7:4]
-All of them [Am7:4]gone[Am6:4]
-Nothing but [Cmaj7:2]blue [Am7:2]skies
-[Dm7:2][G7:2]From now [C6:4]on [Bm7b5:2][E7b9:2]
+[Am:4]Blue days.[AmMaj7:4] All of them [Am7:4]gone[Am6:4]
+Nothing but [Cmaj7:2]blue [Am7:2]skies. [Dm7:2][G7:2]From now [C6:4]on [Bm7b5:2][E7b9:2]

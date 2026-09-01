@@ -1,4 +1,4 @@
-{title: Check To Cheek}
+{title: Cheek To Cheek}
 {artist: Irving Berlin}
 {time: 4/4}
 {Verse:}
@@ -11,7 +11,7 @@ when we're [Am7:4]out together [D7:4]dancing cheek to [Bm7:2]cheek.[E7:2][Am7:2]
 [Gmaj7:2]Mmm, Heaven, [Abdim7:2].... [Am7:2] [D7:2]I'm in [Gmaj7:2]Heaven..[Abdim7:2]. [Am7:2] [D7:2]and the [Gmaj7:2]cares that
 [Am7:2]hung [Bbdim7:2]around me [Bm7:2]through the [F7#11:4]week..[E7:2]
 [A7:2]seem to [D7:2]vanish [Am7:2]like a [Bm7:2]gambler's [C7:2]lucky [F7#11:4]streak..[E7:4]
-when we're [Am7:4]out together [D7:4]dancing cheek to [G:8]cheek.
+when we're [Am7:4]out together [D7:4]dancing cheek to [G6:8]cheek.
 
 {Bridge:}
 Oh, I [Am7:2]love to [D7:2]climb a [G6:2]mountain [E7:2] 
