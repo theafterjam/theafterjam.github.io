@@ -1,0 +1,13 @@
+{title: Summertime}
+{artist: George Gershwin}
+{time: 4/4}
+{define: DmMaj7 frets 2 1 1 0}
+Summer[Am6:2]time,[E9:2] [Am6:2] and the [E9:2]livin' is [Am6:2]easy [E9:2] [Am6:2] [E9:2]
+Fish are [Dm:2]jumpin' [DmMaj7:2] [Dm7:2]    and the[Dm6:2] cotton is [E7:2]high[Cdim7:2][E7:4]
+Oh, your [Am6:2]daddy's  [E9:2]rich [Am6:2] and your [E9:2]ma is good-[Am6:2]lookin' [E9:2] [Am6:2] [E9:2]
+So [Cmaj7:2]hush little [Am7:2]baby, [Bm7b5:2]don't [E7b13:2]you cry[Am6:2] [E9:2] [Am6:2] [E9:2]
+One of these [Am6:2]mornings, [E9:2] [Am6:2]you're goin' to [E9:2]rise up [Am6:2]singin'  [E9:2] [Am6:2] [E9:2]
+And you'll spread [Dm:2]your wings [DmMaj7:2] [Dm7:2] [Dm6:2] and you'll take the [E7:2]sky [Cdim7:2] [E7:4]
+But 'til that [Am6:2]mornin', [E9:2] [Am6:2]there's a-nothin'[E9:2] can [Am6:2]harm [E9:2]you  [Am6:2] [E9:2]
+With [Cmaj7:2]daddy and [Am7:2]mommy [Bm7b5:2]standin' [E7b13:2] [Am6:2]by [E9:2] [Am6:2] [E9:2]
+

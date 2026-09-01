@@ -20,9 +20,19 @@
     "artist": "Jacob Jacobs and Sholom Secunda"
   },
   {
+    "file": "Blue Skies.txt",
+    "title": "Blue Skies",
+    "artist": "Irving Berlin"
+  },
+  {
     "file": "Check To Cheek.txt",
     "title": "Check To Cheek",
     "artist": "Irving Berlin"
+  },
+  {
+    "file": "Dream a Little Dream of Me.txt",
+    "title": "Dream a Little Dream of Me",
+    "artist": "Music by Fabian Andre and Wilbur Schwandt, Lyrics by Gus Kahn  (1931)"
   },
   {
     "file": "Fly Me To The Moon.txt",
@@ -98,6 +108,11 @@
     "file": "Singing in the Rain.txt",
     "title": "Singing in the Rain",
     "artist": "Composed by Nacio Herb Brown; lyrics by Arthur Freed (1929)"
+  },
+  {
+    "file": "Summertime.txt",
+    "title": "Summertime",
+    "artist": "George Gershwin"
   },
   {
     "file": "Sweet Pea.txt",
