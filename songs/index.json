@@ -5,6 +5,11 @@
     "artist": "Turner Layton (1918)"
   },
   {
+    "file": "All The Things You Are.txt",
+    "title": "All The Things You Are",
+    "artist": "Jerome Kern"
+  },
+  {
     "file": "All of Me.txt",
     "title": "All of Me",
     "artist": "Gerald Marks and Seymour Simons (1931)"
@@ -20,6 +25,11 @@
     "artist": "Jacob Jacobs and Sholom Secunda"
   },
   {
+    "file": "Bewitched.txt",
+    "title": "Bewitched",
+    "artist": "Richard Rodgers"
+  },
+  {
     "file": "Blue Skies.txt",
     "title": "Blue Skies",
     "artist": "Irving Berlin"
@@ -28,6 +38,11 @@
     "file": "Cheek To Cheek.txt",
     "title": "Cheek To Cheek",
     "artist": "Irving Berlin"
+  },
+  {
+    "file": "Cry Me A River.txt",
+    "title": "Cry Me A River",
+    "artist": ""
   },
   {
     "file": "Dream a Little Dream of Me.txt",
@@ -123,5 +138,10 @@
     "file": "Take Five.txt",
     "title": "Take Five",
     "artist": "Paul Desmond"
+  },
+  {
+    "file": "The Way You Look Tonight.txt",
+    "title": "The Way You Look Tonight",
+    "artist": "Jerome Kern"
   }
 ]

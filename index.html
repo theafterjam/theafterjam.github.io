@@ -126,6 +126,39 @@
   .editor-wrap .editor-highlight .chord-hl-beat { color: #fff; background: #e67e22; border-radius: 3px; font-weight: bold; }
   .editor-wrap .editor-highlight .chord-hl-undef { color: #c0392b; background: #fadbd8; border-radius: 3px; border-bottom: 2px dashed #c0392b; }
   .editor-wrap .editor-highlight .chord-hl-define { color: #fff; background: #8e44ad; border-radius: 3px; font-weight: bold; }
+  .editor-wrap .editor-highlight .chord-hl-import { color: #fff; background: #0097a7; border-radius: 3px; font-weight: bold; }
+  .editor-wrap .editor-highlight .chord-hl-inserted { color: #fff; background: #e67e22; border-radius: 3px; font-weight: bold; }
+
+  .import-panel { display: none; margin-top: 8px; border: 2px solid #0097a7; border-radius: 6px; background: #e0f7fa; padding: 12px; font-size: 0.85em; }
+  .import-panel.visible { display: block; }
+  .import-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .import-header strong { color: #00695c; font-size: 1.1em; }
+  .import-header .import-status { color: #555; font-size: 0.9em; flex: 1; }
+  .import-header button { background: #e74c3c; color: #fff; border: none; border-radius: 4px; padding: 4px 10px; cursor: pointer; font-size: 0.85em; }
+  .import-file-row { margin-bottom: 8px; }
+  .import-file-row input[type="file"] { font-size: 0.85em; }
+  .import-song-info { background: #b2ebf2; padding: 8px 10px; border-radius: 4px; margin-bottom: 8px; font-size: 0.9em; }
+  .import-song-info strong { color: #00695c; }
+  .import-section-map { margin-bottom: 8px; }
+  .import-section-map table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
+  .import-section-map th { text-align: left; padding: 4px 8px; background: #b2ebf2; color: #00695c; }
+  .import-section-map td { padding: 4px 8px; border-bottom: 1px solid #b2dfdb; }
+  .import-section-map select { font-size: 0.85em; padding: 2px 6px; border-radius: 3px; border: 1px solid #b2dfdb; }
+  .import-section-map .match-auto { color: #27ae60; font-size: 0.8em; }
+  .import-section-map .match-manual { color: #e67e22; font-size: 0.8em; }
+  .import-preview { background: #fff; border: 1px solid #b2dfdb; border-radius: 4px; padding: 8px 10px; max-height: 200px; overflow-y: auto; font-family: 'Consolas', monospace; font-size: 0.85em; white-space: pre-wrap; line-height: 1.5; margin-bottom: 8px; }
+  .import-preview .import-upgraded { color: #0097a7; font-weight: bold; }
+  .import-preview .import-kept { color: #888; }
+  .import-preview .import-section { color: #00695c; font-weight: bold; }
+  .import-apply-row { display: flex; gap: 8px; }
+  .import-apply-row button { padding: 6px 16px; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 0.9em; }
+  .import-apply-row .btn-apply { background: #0097a7; color: #fff; }
+  .import-apply-row .btn-apply:hover { background: #00838f; }
+  .import-apply-row .btn-cancel { background: #95a5a6; color: #fff; }
+  .import-warning { background: #fff3cd; color: #856404; padding: 6px 10px; border-radius: 4px; margin-top: 6px; font-size: 0.85em; }
+  .import-preview .import-inserted { color: #e67e22; font-weight: bold; }
+  .import-preview .import-deleted { color: #c0392b; text-decoration: line-through; }
+
   .editor-wrap textarea {
     position: relative; z-index: 1; background: transparent; color: transparent; caret-color: #333;
     resize: none;
@@ -416,6 +449,24 @@
 {end_of_verse}</textarea>
       </div>
       <div class="editor-nav-hint" id="editorNavHint">Ctrl+&#8594; next chord &nbsp; Ctrl+&#8592; prev chord &nbsp; Ctrl+B beat mode &nbsp; Ctrl+M alignment mode</div>
+      <div class="import-panel" id="importPanel">
+        <div class="import-header">
+          <strong>iReal Pro Import</strong>
+          <span class="import-status" id="importStatus"></span>
+          <button onclick="cancelImport()">&#10005; Cancel</button>
+        </div>
+        <div class="import-file-row">
+          <label>Load iReal Pro HTML file: </label>
+          <input type="file" id="importFile" accept=".html,.htm" />
+        </div>
+        <div id="importSongInfo"></div>
+        <div class="import-section-map" id="importSectionMap"></div>
+        <div class="import-preview" id="importPreview" style="display:none"></div>
+        <div class="import-apply-row" id="importApplyRow" style="display:none">
+          <button class="btn-apply" onclick="applyImport()">Apply Merged Chords</button>
+          <button class="btn-cancel" onclick="cancelImport()">Cancel</button>
+        </div>
+      </div>
     </div>
 
     <div class="tuning-float-header" id="tuningHeader"></div>
@@ -2356,6 +2407,507 @@ function playBass() {
 
 </script>
 <script>
+function extractIRealUrl(html) {
+  const m = html.match(/href="(irealb:\/\/[^"]+)"/i);
+  if (!m) return null;
+  return decodeURIComponent(m[1]);
+}
+
+function extractIRealVersion(html) {
+  const m = html.match(/<span[^>]*class="metadata"[^>]*>(.*?)<\/span>/i);
+  if (!m) return null;
+  const text = m[1];
+  const verMatch = text.match(/iReal Pro\s+([\d.]+)/);
+  const dateMatch = text.match(/^([^—]+)/);
+  return {
+    version: verMatch ? verMatch[1] : null,
+    date: dateMatch ? dateMatch[1].trim() : null,
+    raw: text
+  };
+}
+
+function decodeObfusc50(url) {
+  const parts = url.replace(/^irealb:\/\//, '').split('=');
+  const encoded = parts[6] || parts[5] || '';
+  let s = encoded.replace(/^1r34LbKcu7/, '');
+  let result = '';
+  while (s.length > 50) {
+    const p = s.substring(0, 50);
+    s = s.substring(50);
+    if (s.length < 2) {
+      result += p;
+    } else {
+      const arr = p.split('');
+      for (let i = 0; i < 5; i++) { arr[49 - i] = p[i]; arr[i] = p[49 - i]; }
+      for (let i = 10; i < 24; i++) { arr[49 - i] = p[i]; arr[i] = p[49 - i]; }
+      result += arr.join('');
+    }
+  }
+  result += s;
+  result = result.replace(/XyQ/g, '   ').replace(/LZ/g, '| ').replace(/Kcl/g, '| x');
+  const title = parts[0] || '';
+  const composer = parts[1] || '';
+  const style = parts[3] || '';
+  const key = parts[4] || '';
+  return { title, composer, style, key, raw: result };
+}
+
+function convertIRealChord(token) {
+  if (!token || token === 'n' || token === 'W' || token === 'p' || token === 'x' || token === 'r') return null;
+  token = token.replace(/\s+/g, '').replace(/,/g, '');
+  if (!token.match(/^[A-G]/)) return null;
+  const slashIdx = token.indexOf('/');
+  let main = slashIdx > 0 ? token.substring(0, slashIdx) : token;
+  const bass = slashIdx > 0 ? token.substring(slashIdx) : '';
+  if (main.match(/-\^7/)) { main = main.replace(/-\^7/, 'm(maj7)'); }
+  else if (main.match(/-\^/)) { main = main.replace(/-\^/, 'm(maj7)'); }
+  else {
+    main = main.replace(/\^7/, 'maj7');
+    main = main.replace(/\^/, 'maj7');
+  }
+  main = main.replace(/h7/, 'm7b5');
+  main = main.replace(/h/, 'm7b5');
+  main = main.replace(/o7/, 'dim7');
+  main = main.replace(/o/, 'dim');
+  main = main.replace(/-7/, 'm7');
+  main = main.replace(/-/, 'm');
+  if (main.match(/sus$/) && !main.match(/sus\d/)) main += '4';
+  return main + bass;
+}
+
+function parseIRealChords(decoded) {
+  const raw = decoded.raw;
+  let beatsPerBar = 4;
+  const tsMatch = raw.match(/T(\d)(\d)/);
+  if (tsMatch) beatsPerBar = parseInt(tsMatch[1]);
+  const timeSig = tsMatch ? tsMatch[1] + '/' + tsMatch[2] : '4/4';
+
+  const hasDC = raw.includes('D.C.');
+  let codaText = '';
+  let mainRaw = raw;
+  const codaMatch = raw.match(/\]Y[Q]?(.*)/);
+  if (codaMatch) {
+    codaText = codaMatch[1];
+    mainRaw = raw.substring(0, raw.indexOf(']Y'));
+  }
+
+  const sectionLabels = { A: 'A', B: 'B', C: 'C', D: 'D' };
+  const sectionParts = mainRaw.split(/\*([A-D])/);
+  const sections = [];
+
+  const letterCount = {};
+  let i = 0;
+  if (sectionParts[0] && !sectionParts[0].match(/^\s*$/)) {
+    const result = parseSectionBars(sectionParts[0], beatsPerBar);
+    if (result.chords.length) sections.push({ label: 'Intro', irealLabel: '', chords: result.chords, toCodaIdx: result.toCodaIdx });
+    i = 1;
+  } else {
+    i = 1;
+  }
+
+  // First pass: count how many times each letter appears
+  for (let k = i; k < sectionParts.length; k += 2) {
+    const letter = sectionParts[k];
+    letterCount[letter] = (letterCount[letter] || 0) + 1;
+  }
+  const letterOccurrence = {};
+
+  while (i < sectionParts.length) {
+    const letter = sectionParts[i];
+    const content = sectionParts[i + 1] || '';
+    const baseLabel = sectionLabels[letter] || ('Section ' + letter);
+    letterOccurrence[letter] = (letterOccurrence[letter] || 0) + 1;
+    const occSuffix = letterCount[letter] > 1 ? '-' + letterOccurrence[letter] : '';
+    const result = parseSectionBars(content, beatsPerBar);
+    if (result.chords.length) {
+      if (result.passes) {
+        for (let pi = 0; pi < result.passes.length; pi++) {
+          const passLabel = baseLabel + occSuffix + ' (' + (pi + 1) + ')';
+          const passToCoda = result.passToCodaIdxs ? result.passToCodaIdxs[pi] : -1;
+          sections.push({ label: passLabel, irealLabel: letter, chords: result.passes[pi], toCodaIdx: passToCoda });
+        }
+      } else {
+        const label = baseLabel + occSuffix;
+        sections.push({ label, irealLabel: letter, chords: result.chords, toCodaIdx: result.toCodaIdx });
+      }
+    }
+    i += 2;
+  }
+
+  if (hasDC && sections.length > 0) {
+    // Find the original (pre-split) section with toCodaIdx, using combined chords
+    let dcResult = null, dcBaseLabel = '';
+    // Re-scan sectionParts for the D.C. target
+    const letterOcc2 = {};
+    for (let k = 1; k < sectionParts.length; k += 2) {
+      const letter = sectionParts[k];
+      const content = sectionParts[k + 1] || '';
+      letterOcc2[letter] = (letterOcc2[letter] || 0) + 1;
+      const oSuffix = letterCount[letter] > 1 ? '-' + letterOcc2[letter] : '';
+      const lbl = (sectionLabels[letter] || ('Section ' + letter)) + oSuffix;
+      const res = parseSectionBars(content, beatsPerBar);
+      if (res.toCodaIdx >= 0) { dcResult = res; dcBaseLabel = lbl; break; }
+    }
+    if (dcResult) {
+      const dcChords = dcResult.chords.slice(0, dcResult.toCodaIdx + 1);
+      const codaChords = codaText ? parseSectionBars(codaText, beatsPerBar).chords : [];
+      sections.push({ label: dcBaseLabel + ' (D.C.)', irealLabel: '', chords: dcChords, toCodaIdx: -1 });
+      if (codaChords.length) sections.push({ label: 'Coda', irealLabel: '', chords: codaChords, toCodaIdx: -1 });
+    }
+  }
+
+  return { title: decoded.title, composer: decoded.composer, key: decoded.key, style: decoded.style, timeSig, beatsPerBar, sections };
+}
+
+function parseSectionBars(text, beatsPerBar) {
+  let cleaned = text;
+  cleaned = cleaned.replace(/\([^)]*\)/g, '');
+  cleaned = cleaned.replace(/<[^>]*>/g, '');
+  cleaned = cleaned.replace(/T\d+/g, '');
+  cleaned = cleaned.replace(/[UY]/g, '');
+  cleaned = cleaned.replace(/Z/g, '');
+  cleaned = cleaned.replace(/(?<![a-zA-Z])l(?=[A-G])/g, '');
+
+  const rawBars = [];
+  let currentEnding = 0;
+  let repeatStartIdx = -1;
+  let repeatEndIdx = -1;
+  let toCodaBarIdx = -1;
+
+  const barTexts = cleaned.split('|');
+  for (const barText of barTexts) {
+    let bt = barText.trim();
+    if (!bt) continue;
+
+    let isRepeatStart = bt.includes('{');
+    if (isRepeatStart) bt = bt.replace(/\{/g, '');
+    const endingMatch = bt.match(/N(\d)/);
+    if (endingMatch) { currentEnding = parseInt(endingMatch[1]); bt = bt.replace(/N\d/g, ''); }
+    let isRepeatEnd = bt.includes('}');
+    let hasToCoda = bt.includes('Q');
+    bt = bt.replace(/[Q}\[\]]/g, '').trim();
+
+    if (isRepeatStart) repeatStartIdx = rawBars.length;
+    if (!bt) { if (isRepeatEnd) repeatEndIdx = rawBars.length - 1; continue; }
+
+    const parsed = parseBarChords(bt, beatsPerBar);
+    if (parsed.repeat && rawBars.length > 0) {
+      rawBars.push({ chords: rawBars[rawBars.length - 1].chords.map(c => ({ ...c })), ending: currentEnding });
+    } else if (parsed.chords.length > 0) {
+      rawBars.push({ chords: parsed.chords, ending: currentEnding });
+    }
+
+    if (hasToCoda) toCodaBarIdx = rawBars.length - 1;
+    if (isRepeatEnd) { repeatEndIdx = rawBars.length - 1; currentEnding = 0; }
+  }
+
+  function computeToCodaIdx(chordArr, barIdx) {
+    if (barIdx < 0) return -1;
+    let idx = 0;
+    for (let b = 0; b < rawBars.length && b <= barIdx; b++) {
+      idx += rawBars[b].chords.length;
+    }
+    return idx - 1;
+  }
+
+  if (repeatStartIdx < 0) {
+    const result = [];
+    for (const bar of rawBars) { for (const ch of bar.chords) result.push(ch); }
+    return { chords: result, toCodaIdx: computeToCodaIdx(result, toCodaBarIdx), passes: null };
+  }
+
+  const endings = {};
+  for (let j = 0; j < rawBars.length; j++) {
+    if (rawBars[j].ending > 0) {
+      if (!endings[rawBars[j].ending]) endings[rawBars[j].ending] = { start: j, end: j };
+      else endings[rawBars[j].ending].end = j;
+    }
+  }
+
+  const result = [];
+  let toCodaChordIdx = -1;
+  const endingNums = Object.keys(endings).map(Number).sort();
+  const pass1 = [], pass2 = [];
+  let toCodaPass = -1;
+  let toCodaPassIdx = -1;
+
+  function pushBar(j, target) {
+    for (const ch of rawBars[j].chords) {
+      result.push(ch);
+      if (target) target.push(ch);
+    }
+    if (j === toCodaBarIdx) {
+      toCodaChordIdx = result.length - 1;
+      toCodaPass = target === pass1 ? 0 : 1;
+      toCodaPassIdx = target.length - 1;
+    }
+  }
+
+  if (endingNums.length >= 2) {
+    const e1Start = endings[endingNums[0]].start;
+    for (let j = repeatStartIdx; j < e1Start; j++) pushBar(j, pass1);
+    for (let j = e1Start; j <= endings[endingNums[0]].end; j++) pushBar(j, pass1);
+    for (let j = repeatStartIdx; j < e1Start; j++) pushBar(j, pass2);
+    for (let j = endings[endingNums[1]].start; j <= endings[endingNums[1]].end; j++) pushBar(j, pass2);
+    const afterRepeat = (endings[endingNums[1]].end + 1);
+    for (let j = afterRepeat; j < rawBars.length; j++) pushBar(j, pass2);
+  } else {
+    for (let j = repeatStartIdx; j <= repeatEndIdx; j++) pushBar(j, pass1);
+    for (let j = repeatStartIdx; j <= repeatEndIdx; j++) pushBar(j, pass2);
+    const afterRepeat = repeatEndIdx + 1;
+    for (let j = afterRepeat; j < rawBars.length; j++) pushBar(j, pass2);
+  }
+  const passToCodaIdxs = [-1, -1];
+  if (toCodaPass >= 0) passToCodaIdxs[toCodaPass] = toCodaPassIdx;
+  return { chords: result, toCodaIdx: toCodaChordIdx, passes: [pass1, pass2], passToCodaIdxs };
+}
+
+function parseBarChords(barText, beatsPerBar) {
+  const sMatch = barText.match(/^(.*?)\s+s(?=[A-G])([^,]+(?:,[^,]+)*),?\s*$/);
+  if (!sMatch) {
+    const tokens = barText.split(/\s+/);
+    let chords = [];
+    let isRepeat = false;
+    for (const tok of tokens) {
+      if (tok === 'x' || tok === 'r') { isRepeat = true; continue; }
+      const c = convertIRealChord(tok);
+      if (c) chords.push(c);
+    }
+    if (isRepeat) return { chords: [], repeat: true };
+    const beatsPer = chords.length ? beatsPerBar / chords.length : 0;
+    return { chords: chords.map(name => ({ name, beats: beatsPer })), repeat: false };
+  }
+  const mainPart = sMatch[1].trim();
+  const subPart = sMatch[2];
+  const mainChords = [];
+  if (mainPart) {
+    for (const tok of mainPart.split(/\s+/)) {
+      const c = convertIRealChord(tok);
+      if (c) mainChords.push(c);
+    }
+  }
+  const subChords = [];
+  for (const sc of subPart.split(',')) {
+    const t = sc.trim();
+    if (!t) continue;
+    const c = convertIRealChord(t);
+    if (c) subChords.push(c);
+  }
+  const totalSlots = mainChords.length + 1;
+  const beatsPerSlot = beatsPerBar / totalSlots;
+  const result = mainChords.map(name => ({ name, beats: beatsPerSlot }));
+  const subBeats = beatsPerSlot / subChords.length;
+  for (const name of subChords) result.push({ name, beats: subBeats });
+  return { chords: result, repeat: false };
+}
+
+function getChordRoot(name) {
+  if (!name) return '';
+  const m = name.match(/^([A-G][b#]?)/);
+  return m ? m[1] : '';
+}
+
+function normalizeRoot(root) {
+  const enharmonic = { 'Cb': 'B', 'Fb': 'E', 'E#': 'F', 'B#': 'C' };
+  const toSharp = { 'Db': 'C#', 'Eb': 'D#', 'Gb': 'F#', 'Ab': 'G#', 'Bb': 'A#' };
+  let r = enharmonic[root] || root;
+  return toSharp[r] || r;
+}
+
+function rootsMatch(r1, r2) {
+  return normalizeRoot(r1) === normalizeRoot(r2);
+}
+
+function getQualityRank(chordName) {
+  const q = chordName.replace(/^[A-G][b#]?/, '');
+  if (q.match(/b9|#9|b5|#5|alt/)) return 6;
+  if (q.match(/^(13|11)/)) return 5;
+  if (q.match(/^9/) || q === 'add9') return 4;
+  if (q.match(/m7b5|dim7|dim/)) return 3;
+  if (q.match(/maj7|m7|7sus|sus/)) return 2;
+  if (q.match(/^7/)) return 2;
+  if (q.match(/^6/) || q === 'm6') return 2;
+  if (q === 'm' || q === '' || q === '5' || q === 'aug') return 1;
+  return 2;
+}
+
+</script>
+<script>
+function getEditorSections(text) {
+  const sections = [];
+  const lines = text.split('\n');
+  let currentLabel = '';
+  let currentHeaderIdx = -1;
+  let currentLines = [];
+  let lineIdx = 0;
+
+  for (const line of lines) {
+    const sectionMatch = line.match(/^\{([^}]+)\}$/);
+    if (sectionMatch) {
+      const inner = sectionMatch[1];
+      if (inner.match(/^(title|t|artist|time|define):/i)) { lineIdx++; continue; }
+      if (inner.match(/^(start_of_|end_of_|comment)/i)) {
+        const labelMatch = inner.match(/^(?:start_of_\w+|comment)\s*:?\s*(.*)$/i);
+        if (labelMatch && labelMatch[1]) {
+          if (currentLines.length) sections.push({ label: currentLabel, headerLineIdx: currentHeaderIdx, lines: currentLines });
+          currentLabel = labelMatch[1].replace(/:$/, '').trim();
+          currentHeaderIdx = lineIdx;
+          currentLines = [];
+        }
+        lineIdx++;
+        continue;
+      }
+      const label = inner.replace(/:$/, '').trim();
+      if (currentLines.length) sections.push({ label: currentLabel, headerLineIdx: currentHeaderIdx, lines: currentLines });
+      currentLabel = label;
+      currentHeaderIdx = lineIdx;
+      currentLines = [];
+      lineIdx++;
+      continue;
+    }
+    currentLines.push({ text: line, lineIdx });
+    lineIdx++;
+  }
+  if (currentLines.length) sections.push({ label: currentLabel, headerLineIdx: currentHeaderIdx, lines: currentLines });
+  if (sections.length === 1 && !sections[0].label) sections[0].label = 'All';
+  return sections;
+}
+
+function buildSectionMap(irealSections, editorSections) {
+  const skipLabels = /^(interlude|intro|outro|page)\b/i;
+  const mapping = [];
+  let irIdx = 0;
+  for (const ed of editorSections) {
+    if (skipLabels.test(ed.label)) {
+      mapping.push({ editorLabel: ed.label, irealIdx: -1, autoMatched: false });
+    } else if (irIdx < irealSections.length) {
+      mapping.push({ editorLabel: ed.label, irealIdx: irIdx, autoMatched: true });
+      irIdx++;
+    } else {
+      mapping.push({ editorLabel: ed.label, irealIdx: -1, autoMatched: false });
+    }
+  }
+  return mapping;
+}
+
+function alignChords(edRoots, irRoots) {
+  const n = edRoots.length, m = irRoots.length;
+  const dp = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
+  for (let i = 1; i <= n; i++) {
+    for (let j = 1; j <= m; j++) {
+      if (rootsMatch(edRoots[i - 1], irRoots[j - 1])) dp[i][j] = dp[i - 1][j - 1] + 1;
+      else dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+    }
+  }
+  const pairs = [];
+  let i = n, j = m;
+  while (i > 0 && j > 0) {
+    if (rootsMatch(edRoots[i - 1], irRoots[j - 1])) { pairs.push([i - 1, j - 1]); i--; j--; }
+    else if (dp[i - 1][j] >= dp[i][j - 1]) i--;
+    else j--;
+  }
+  pairs.reverse();
+  return pairs;
+}
+
+function mergeSection(edSection, irSection) {
+  const chordRegex = /\[([^\],:]+)(?::(\d+(?:\.\d+)?))?(?:,(\d+))?\]/g;
+  const edAll = [];
+  for (const cl of edSection.lines) {
+    let cm;
+    while ((cm = chordRegex.exec(cl.text)) !== null) {
+      edAll.push({ name: cm[1], beats: cm[2] || '', voicing: cm[3] || '', full: cm[0], lineIdx: cl.lineIdx, start: cm.index, root: getChordRoot(cm[1]) });
+    }
+  }
+
+  const irAll = irSection.chords;
+  const edRoots = edAll.map(c => c.root);
+  const irRoots = irAll.map(c => getChordRoot(c.name));
+  const pairs = alignChords(edRoots, irRoots);
+
+  const edToIr = {}, irToEd = {};
+  for (const [ei, ii] of pairs) { edToIr[ei] = ii; irToEd[ii] = ei; }
+  const edMatched = new Set(pairs.map(p => p[0]));
+  const irMatched = new Set(pairs.map(p => p[1]));
+
+  const irAbsorbed = new Set();
+  for (const [ei, ii] of pairs) {
+    let jj = ii + 1;
+    while (jj < irAll.length && !irMatched.has(jj) && irAll[jj].name === irAll[ii].name) {
+      irAbsorbed.add(jj);
+      jj++;
+    }
+    jj = ii - 1;
+    while (jj >= 0 && !irMatched.has(jj) && irAll[jj].name === irAll[ii].name) {
+      irAbsorbed.add(jj);
+      jj--;
+    }
+  }
+
+  const replacePairs = [];
+  const anchors = [[-1, -1], ...pairs, [edAll.length, irAll.length]];
+  for (let a = 0; a < anchors.length - 1; a++) {
+    const [prevEd, prevIr] = anchors[a];
+    const [nextEd, nextIr] = anchors[a + 1];
+    const gapEd = [], gapIr = [];
+    for (let ei = prevEd + 1; ei < nextEd; ei++) { if (!edMatched.has(ei)) gapEd.push(ei); }
+    for (let ii = prevIr + 1; ii < nextIr; ii++) { if (!irMatched.has(ii) && !irAbsorbed.has(ii)) gapIr.push(ii); }
+    const pairCount = Math.min(gapEd.length, gapIr.length);
+    for (let p = 0; p < pairCount; p++) replacePairs.push([gapEd[p], gapIr[p]]);
+  }
+  const edReplaced = new Set(replacePairs.map(p => p[0]));
+  const irReplaced = new Set(replacePairs.map(p => p[1]));
+  const replaceEdToIr = {};
+  for (const [ei, ii] of replacePairs) replaceEdToIr[ei] = ii;
+
+  function irBeatSum(startIi) {
+    let beats = irAll[startIi].beats;
+    let jj = startIi - 1;
+    while (jj >= 0 && irAbsorbed.has(jj) && irAll[jj].name === irAll[startIi].name) { beats += irAll[jj].beats; jj--; }
+    jj = startIi + 1;
+    while (irAbsorbed.has(jj) && irAll[jj].name === irAll[startIi].name) { beats += irAll[jj].beats; jj++; }
+    return beats;
+  }
+
+  const ops = [];
+  let irCursor = 0;
+  for (let ei = 0; ei < edAll.length; ei++) {
+    const ec = edAll[ei];
+    if (edMatched.has(ei)) {
+      const ii = edToIr[ei];
+      for (let j = irCursor; j < ii; j++) {
+        if (!irAbsorbed.has(j) && !irReplaced.has(j) && !irMatched.has(j)) {
+          ops.push({ type: 'insert', ec: null, ir: irAll[j], irBeats: irAll[j].beats, beforeEc: ec });
+        }
+      }
+      const beats = irBeatSum(ii);
+      ops.push({ type: 'match', ec, ir: irAll[ii], irBeats: beats });
+      irCursor = ii + 1;
+      while (irAbsorbed.has(irCursor)) irCursor++;
+    } else if (edReplaced.has(ei)) {
+      const ii = replaceEdToIr[ei];
+      for (let j = irCursor; j < ii; j++) {
+        if (!irAbsorbed.has(j) && !irReplaced.has(j) && !irMatched.has(j)) {
+          ops.push({ type: 'insert', ec: null, ir: irAll[j], irBeats: irAll[j].beats, beforeEc: ec });
+        }
+      }
+      ops.push({ type: 'replace', ec, ir: irAll[ii], irBeats: irAll[ii].beats });
+      irCursor = ii + 1;
+    } else {
+      ops.push({ type: 'delete', ec });
+    }
+  }
+  for (let j = irCursor; j < irAll.length; j++) {
+    if (!irAbsorbed.has(j) && !irReplaced.has(j) && !irMatched.has(j)) {
+      ops.push({ type: 'insert', ec: null, ir: irAll[j], irBeats: irAll[j].beats, beforeEc: null });
+    }
+  }
+
+  return { ops, edAll, edMatched, edReplaced };
+}
+
+</script>
+<script>
 const STORAGE_KEY = 'uke-songbook';
 let currentTuning = 'GCEA';
 let transposeAmount = 0;
@@ -3225,11 +3777,14 @@ function parseChordPro(text) {
         if (m[0].toLowerCase() === '{to_coda}') {
           segments.push({ chord: null, beats: 0, voicingIndex: 0, text: '', marker: 'to_coda' });
         } else {
+          const rawChord = m[1];
+          const isInserted = rawChord.startsWith('!');
           segments.push({
-            chord: m[1],
+            chord: isInserted ? rawChord.substring(1) : rawChord,
             beats: m[2] ? parseFloat(m[2]) : 0,
             voicingIndex: m[3] ? parseInt(m[3]) : 0,
-            text: ''
+            text: '',
+            inserted: isInserted
           });
         }
         last = m.index + m[0].length;
@@ -3606,6 +4161,7 @@ function renderLyrics(song, semitones, useFlats, output) {
         } else {
           const chordSpan = document.createElement('span');
           chordSpan.className = 'chord';
+          if (seg.inserted) chordSpan.style.color = '#e67e22';
           chordSpan.textContent = transposed;
           pair.appendChild(chordSpan);
         }
@@ -3685,7 +4241,7 @@ function renderGrid(song, semitones, useFlats, output) {
           const hasBeats = seg.beats > 0;
           const beats = hasBeats ? seg.beats : 1;
           if (!hasBeats) hasMissingBeats = true;
-          const chordObj = { name, beats, hasBeats, text: seg.text || '', voicingIndex: seg.voicingIndex };
+          const chordObj = { name, beats, hasBeats, text: seg.text || '', voicingIndex: seg.voicingIndex, inserted: seg.inserted };
           if (gridCodaMarkerPending) { chordObj.codaMarkerBefore = true; gridCodaMarkerPending = false; }
           lineChords.push(chordObj);
           foundChord = true;
@@ -3837,6 +4393,7 @@ function renderGrid(song, semitones, useFlats, output) {
         if (take < 1) cell.classList.add('half-beat');
         cell.style.flex = take;
 
+        if (ch.inserted) cell.style.color = '#e67e22';
         if (chartMode && take >= 1) {
           const label = document.createElement('span');
           label.className = 'ireal-cell-label';
@@ -3935,6 +4492,7 @@ function updateEditorHighlight() {
   let count = 0;
   highlight.innerHTML = escaped.replace(/\[([^\]]+)\]/g, (match, p1) => {
     const chordName = p1.split(/[:, ]/)[0];
+    if (chordName.startsWith('!')) { count++; return '<span class="chord-hl-inserted">' + match + '</span>'; }
     if (defineMode && chordName === defineChordName) { count++; return '<span class="chord-hl-define">' + match + '</span>'; }
     if (count === activeIdx) { count++; return '<span class="' + activeCls + '">' + match + '</span>'; }
     const cls = isChordDefined(chordName, defines) ? 'chord-hl' : 'chord-hl-undef';
@@ -4376,7 +4934,10 @@ function findDefineInsertPos(text) {
 function updateModeHint() {
   const hint = document.getElementById('editorNavHint');
   if (!hint) return;
-  if (defineMode) {
+  if (importMode) {
+    hint.textContent = 'IMPORT MODE (Ctrl+I): load iReal Pro file, map sections, apply — Escape = cancel';
+    hint.style.color = '#0097a7';
+  } else if (defineMode) {
     hint.textContent = 'DEFINE MODE (Ctrl+D): edit frets for ' + defineChordName + ', Enter = confirm, Escape = cancel';
     hint.style.color = '#8e44ad';
   } else if (beatEntryMode) {
@@ -4386,7 +4947,7 @@ function updateModeHint() {
     hint.textContent = 'ALIGNMENT MODE (Ctrl+M): ←→ move chord, Ctrl+←→ jump chords, Escape = exit';
     hint.style.color = '#27ae60';
   } else {
-    hint.innerHTML = 'Ctrl+→ next chord &nbsp; Ctrl+← prev chord &nbsp; Ctrl+B beat mode &nbsp; Ctrl+M alignment mode &nbsp; Ctrl+D define chord';
+    hint.innerHTML = 'Ctrl+→ next chord &nbsp; Ctrl+← prev chord &nbsp; Ctrl+B beat mode &nbsp; Ctrl+M alignment mode &nbsp; Ctrl+D define chord &nbsp; Ctrl+I import';
     hint.style.color = '#888';
   }
 }
@@ -4468,6 +5029,416 @@ function mergeChordLineWithLyrics(chordLine, lyricLine) {
   const trailing = lyricLine.substring(lyricPos).trim();
   if (trailing) result += ' ' + trailing;
   return result;
+}
+
+// --- iReal Pro Import ---
+let importMode = false;
+let importData = null;
+let importMergedContent = '';
+
+// Parser functions in irealParser.js, merge functions in irealMerge.js
+
+function renderImportSectionMap(irealSections, editorSections, mapping) {
+  const container = document.getElementById('importSectionMap');
+  if (!editorSections.length) { container.innerHTML = ''; return; }
+  const maxIrChords = Math.max(...irealSections.map(s => s.chords.length));
+  let html = '<table><tr><th>Editor Section</th><th>→</th><th>iReal Pro Section</th><th></th></tr>';
+  for (let i = 0; i < mapping.length; i++) {
+    const m = mapping[i];
+    const edChordCount = editorSections[i].lines.filter(l => l.text.includes('[')).reduce((n, l) => n + (l.text.match(/\[[^\]]+\]/g) || []).length, 0);
+    const tooLarge = edChordCount > maxIrChords * 1.5 && edChordCount > 20;
+    html += '<tr><td><strong>' + escHtml(m.editorLabel) + '</strong> (' + edChordCount + ' chords)';
+    if (tooLarge) html += ' <span class="import-warning" title="This section has far more chords than any iReal Pro section. Consider splitting it into subsections before importing.">⚠ too large</span>';
+    html += '</td><td>→</td><td>';
+    html += '<select data-idx="' + i + '" onchange="onImportMappingChange(this)">';
+    html += '<option value="-1">— Skip —</option>';
+    html += '<option value="__delete__">— Delete section —</option>';
+    for (let j = 0; j < irealSections.length; j++) {
+      const ir = irealSections[j];
+      const sel = j === m.irealIdx ? ' selected' : '';
+      html += '<option value="' + j + '"' + sel + '>' + escHtml(ir.label) + ' (' + ir.chords.length + ' chords)</option>';
+    }
+    html += '</select></td><td>';
+    html += m.autoMatched ? '<span class="match-auto">auto</span>' : '';
+    html += '</td></tr>';
+  }
+  html += '</table>';
+  container.innerHTML = html;
+}
+
+function onImportMappingChange(sel) {
+  const idx = parseInt(sel.dataset.idx);
+  if (importData && importData.mapping) {
+    const val = sel.value;
+    importData.mapping[idx].irealIdx = val === '__delete__' ? '__delete__' : parseInt(val);
+    importData.mapping[idx].autoMatched = false;
+    generateImportPreview();
+  }
+}
+
+function generateImportPreview() {
+  if (!importData) return;
+  const { irealSections, editorSections, mapping } = importData;
+  const textarea = document.getElementById('chordProInput');
+  const lines = textarea.value.split('\n');
+  const mergedLines = [...lines];
+  const allChanges = [];
+  const sectionPreviews = [];
+
+  const deleteLineIdxs = new Set();
+  for (let mi = 0; mi < mapping.length; mi++) {
+    const m = mapping[mi];
+    const edSection = editorSections[mi];
+    if (!edSection) continue;
+
+    if (m.irealIdx === '__delete__') {
+      for (const l of edSection.lines) deleteLineIdxs.add(l.lineIdx);
+      if (edSection.headerLineIdx >= 0) deleteLineIdxs.add(edSection.headerLineIdx);
+      sectionPreviews.push({ label: edSection.label, irLabel: '', tokens: [{ type: 'section-deleted' }] });
+      continue;
+    }
+    if (m.irealIdx < 0) {
+      sectionPreviews.push({ label: edSection.label, irLabel: '', tokens: [{ type: 'skipped' }] });
+      continue;
+    }
+    const irSection = irealSections[m.irealIdx];
+    if (!irSection) continue;
+
+    const chordRegex = /\[([^\],:]+)(?::(\d+(?:\.\d+)?))?(?:,(\d+))?\]/g;
+    const edAll = [];
+    for (const cl of edSection.lines) {
+      let cm;
+      while ((cm = chordRegex.exec(cl.text)) !== null) {
+        edAll.push({ name: cm[1], beats: cm[2] || '', voicing: cm[3] || '', full: cm[0], lineIdx: cl.lineIdx, start: cm.index, root: getChordRoot(cm[1]) });
+      }
+    }
+
+    const irAll = irSection.chords;
+    const edRoots = edAll.map(c => c.root);
+    const irRoots = irAll.map(c => getChordRoot(c.name));
+    const pairs = alignChords(edRoots, irRoots);
+
+    const edToIr = {}, irToEd = {};
+    for (const [ei, ii] of pairs) { edToIr[ei] = ii; irToEd[ii] = ei; }
+    const edMatched = new Set(pairs.map(p => p[0]));
+    const irMatched = new Set(pairs.map(p => p[1]));
+
+    // Absorb consecutive same-name ir chords into their match (both directions)
+    const irAbsorbed = new Set();
+    for (const [ei, ii] of pairs) {
+      let jj = ii + 1;
+      while (jj < irAll.length && !irMatched.has(jj) && irAll[jj].name === irAll[ii].name) {
+        irAbsorbed.add(jj);
+        jj++;
+      }
+      jj = ii - 1;
+      while (jj >= 0 && !irMatched.has(jj) && irAll[jj].name === irAll[ii].name) {
+        irAbsorbed.add(jj);
+        jj--;
+      }
+    }
+
+    // Between matched anchors, pair unmatched ed/ir chords as replacements
+    const replacePairs = [];
+    const anchors = [[-1, -1], ...pairs, [edAll.length, irAll.length]];
+    for (let a = 0; a < anchors.length - 1; a++) {
+      const [prevEd, prevIr] = anchors[a];
+      const [nextEd, nextIr] = anchors[a + 1];
+      const gapEd = [], gapIr = [];
+      for (let ei = prevEd + 1; ei < nextEd; ei++) { if (!edMatched.has(ei)) gapEd.push(ei); }
+      for (let ii = prevIr + 1; ii < nextIr; ii++) { if (!irMatched.has(ii) && !irAbsorbed.has(ii)) gapIr.push(ii); }
+      const pairCount = Math.min(gapEd.length, gapIr.length);
+      for (let p = 0; p < pairCount; p++) replacePairs.push([gapEd[p], gapIr[p]]);
+    }
+    const edReplaced = new Set(replacePairs.map(p => p[0]));
+    const irReplaced = new Set(replacePairs.map(p => p[1]));
+    const replaceEdToIr = {};
+    for (const [ei, ii] of replacePairs) replaceEdToIr[ei] = ii;
+
+    // Build ops list: [{type, ec, ir, irBeats, ...}]
+    const ops = [];
+    function irBeatSum(startIi) {
+      let beats = irAll[startIi].beats;
+      let jj = startIi - 1;
+      while (jj >= 0 && irAbsorbed.has(jj) && irAll[jj].name === irAll[startIi].name) { beats += irAll[jj].beats; jj--; }
+      jj = startIi + 1;
+      while (irAbsorbed.has(jj) && irAll[jj].name === irAll[startIi].name) { beats += irAll[jj].beats; jj++; }
+      return beats;
+    }
+
+    // Process in editor order, interleaving inserts
+    let irCursor = 0;
+    for (let ei = 0; ei < edAll.length; ei++) {
+      const ec = edAll[ei];
+      if (edMatched.has(ei)) {
+        const ii = edToIr[ei];
+        // Insert any unmatched ir chords before this match
+        for (let j = irCursor; j < ii; j++) {
+          if (!irAbsorbed.has(j) && !irReplaced.has(j) && !irMatched.has(j)) {
+            ops.push({ type: 'insert', ec: null, ir: irAll[j], irBeats: irAll[j].beats, beforeEc: ec });
+          }
+        }
+        const beats = irBeatSum(ii);
+        ops.push({ type: 'match', ec, ir: irAll[ii], irBeats: beats });
+        irCursor = ii + 1;
+        while (irAbsorbed.has(irCursor)) irCursor++;
+      } else if (edReplaced.has(ei)) {
+        const ii = replaceEdToIr[ei];
+        // Insert any unmatched ir chords before this replacement
+        for (let j = irCursor; j < ii; j++) {
+          if (!irAbsorbed.has(j) && !irReplaced.has(j) && !irMatched.has(j)) {
+            ops.push({ type: 'insert', ec: null, ir: irAll[j], irBeats: irAll[j].beats, beforeEc: ec });
+          }
+        }
+        ops.push({ type: 'replace', ec, ir: irAll[ii], irBeats: irAll[ii].beats });
+        irCursor = ii + 1;
+      } else {
+        ops.push({ type: 'delete', ec });
+      }
+    }
+    // Append remaining ir chords
+    for (let j = irCursor; j < irAll.length; j++) {
+      if (!irAbsorbed.has(j) && !irReplaced.has(j) && !irMatched.has(j)) {
+        ops.push({ type: 'insert', ec: null, ir: irAll[j], irBeats: irAll[j].beats, beforeEc: null });
+      }
+    }
+
+    // Apply ops to mergedLines
+    const preview = { label: edSection.label, irLabel: irSection.label, tokens: [] };
+    const processedEd = new Set();
+    const insertOps = [];
+    let prevProcessedEc = null;
+
+    for (const op of ops) {
+      if (op.type === 'match' || op.type === 'replace') {
+        const ec = op.ec;
+        processedEd.add(edAll.indexOf(ec));
+        const irName = op.ir.name;
+        const irBeats = op.irBeats ? String(op.irBeats) : '';
+        const newName = irName;
+        const newBeats = irBeats;
+        const nameChanged = newName !== ec.name;
+        const beatsChanged = newBeats && newBeats !== ec.beats;
+        if (nameChanged || beatsChanged) {
+          const beatPart = newBeats ? ':' + newBeats : (ec.beats ? ':' + ec.beats : '');
+          const voicingPart = ec.voicing ? ',' + ec.voicing : '';
+          const newStr = '[' + newName + beatPart + voicingPart + ']';
+          const line = mergedLines[ec.lineIdx];
+          const idx = line.indexOf(ec.full);
+          if (idx >= 0) mergedLines[ec.lineIdx] = line.substring(0, idx) + newStr + line.substring(idx + ec.full.length);
+          ec.full = newStr;
+          allChanges.push({ from: ec.name, to: newName, fromBeats: ec.beats, toBeats: newBeats, nameChanged, beatsChanged, inserted: false, lineIdx: ec.lineIdx });
+        }
+        if (nameChanged) {
+          preview.tokens.push({ type: 'upgraded', from: ec.name, to: newName, beats: newBeats || ec.beats });
+        } else if (beatsChanged) {
+          preview.tokens.push({ type: 'beats', name: newName, fromBeats: ec.beats, beats: newBeats });
+        } else {
+          preview.tokens.push({ type: 'same', name: ec.name, beats: newBeats || ec.beats });
+        }
+        prevProcessedEc = ec;
+      } else if (op.type === 'delete') {
+        const ec = op.ec;
+        processedEd.add(edAll.indexOf(ec));
+        const line = mergedLines[ec.lineIdx];
+        const idx = line.indexOf(ec.full);
+        if (idx >= 0) mergedLines[ec.lineIdx] = line.substring(0, idx) + line.substring(idx + ec.full.length);
+        allChanges.push({ from: ec.name, to: '', fromBeats: ec.beats, toBeats: '', nameChanged: false, beatsChanged: false, deleted: true, lineIdx: ec.lineIdx });
+        preview.tokens.push({ type: 'deleted', name: ec.name, beats: ec.beats });
+        continue;
+      } else if (op.type === 'insert') {
+        const ir = op.ir;
+        const beatStr = ir.beats ? ':' + ir.beats : '';
+        const insertText = '[!' + ir.name + beatStr + ']';
+        if (op.beforeEc) {
+          insertOps.push({ targetLineIdx: op.beforeEc.lineIdx, insertBefore: op.beforeEc, insertText });
+        } else if (prevProcessedEc) {
+          insertOps.push({ targetLineIdx: prevProcessedEc.lineIdx, insertAfterEnd: true, insertText });
+        } else {
+          const lastLine = edSection.lines[edSection.lines.length - 1];
+          insertOps.push({ targetLineIdx: lastLine.lineIdx, insertAfterEnd: true, insertText });
+        }
+        allChanges.push({ from: '', to: ir.name, fromBeats: '', toBeats: ir.beats ? String(ir.beats) : '', nameChanged: false, beatsChanged: false, inserted: true, lineIdx: op.beforeEc ? op.beforeEc.lineIdx : (prevProcessedEc ? prevProcessedEc.lineIdx : -1) });
+        preview.tokens.push({ type: 'inserted', name: ir.name, beats: ir.beats ? String(ir.beats) : '' });
+      }
+    }
+
+    // Apply insert ops to mergedLines
+    const byLine = {};
+    for (const op of insertOps) {
+      if (!byLine[op.targetLineIdx]) byLine[op.targetLineIdx] = [];
+      byLine[op.targetLineIdx].push(op);
+    }
+    for (const lineIdx of Object.keys(byLine)) {
+      const lineOps = byLine[lineIdx];
+      // Sort: insertBefore ops by position (ascending), insertAfterEnd ops last
+      const beforeOps = lineOps.filter(o => o.insertBefore).map(o => {
+        const pos = mergedLines[o.targetLineIdx].indexOf(o.insertBefore.full);
+        return { ...o, pos: pos >= 0 ? pos : mergedLines[o.targetLineIdx].length };
+      }).sort((a, b) => a.pos - b.pos);
+      const afterOps = lineOps.filter(o => o.insertAfterEnd);
+
+      let offset = 0;
+      for (const op of beforeOps) {
+        const line = mergedLines[op.targetLineIdx];
+        const pos = Math.min(op.pos + offset, line.length);
+        mergedLines[op.targetLineIdx] = line.substring(0, pos) + op.insertText + line.substring(pos);
+        offset += op.insertText.length;
+      }
+      for (const op of afterOps) {
+        mergedLines[op.targetLineIdx] = mergedLines[op.targetLineIdx] + op.insertText;
+      }
+    }
+
+    sectionPreviews.push(preview);
+  }
+
+  if (deleteLineIdxs.size) {
+    for (let i = mergedLines.length - 1; i >= 0; i--) {
+      if (deleteLineIdxs.has(i)) mergedLines.splice(i, 1);
+    }
+  }
+
+  importMergedContent = mergedLines.join('\n');
+
+  const previewEl = document.getElementById('importPreview');
+  const applyRow = document.getElementById('importApplyRow');
+
+  if (!allChanges.length && !sectionPreviews.some(s => s.tokens.some(t => t.type === 'section-deleted'))) {
+    previewEl.innerHTML = '<em>No changes found. Chords and beats already match the iReal Pro data.</em>';
+    previewEl.style.display = 'block';
+    applyRow.style.display = 'none';
+    return;
+  }
+
+  let previewHtml = '';
+  for (const sp of sectionPreviews) {
+    const irLabel = sp.irLabel ? ' → ' + escHtml(sp.irLabel) : '';
+    previewHtml += '<span class="import-section">[' + escHtml(sp.label) + ']' + irLabel + '</span>\n';
+    if (sp.tokens.length === 1 && sp.tokens[0].type === 'section-deleted') {
+      previewHtml += '<span class="import-deleted">  (section deleted)</span>\n\n';
+      continue;
+    }
+    if (sp.tokens.length === 1 && sp.tokens[0].type === 'skipped') {
+      previewHtml += '  <span class="import-kept">(skipped)</span>\n\n';
+      continue;
+    }
+    previewHtml += '  ';
+    for (const t of sp.tokens) {
+      const beatStr = t.beats ? ':' + t.beats : '';
+      if (t.type === 'same') {
+        previewHtml += '<span class="import-kept">[' + escHtml(t.name + beatStr) + ']</span> ';
+      } else if (t.type === 'beats') {
+        previewHtml += '<span class="import-upgraded">[' + escHtml(t.name + beatStr) + ']</span> ';
+      } else if (t.type === 'upgraded') {
+        previewHtml += '<span class="import-upgraded" title="was: ' + escHtml(t.from) + '">[' + escHtml(t.to + beatStr) + ']</span> ';
+      } else if (t.type === 'inserted') {
+        previewHtml += '<span class="import-inserted">[!' + escHtml(t.name + beatStr) + ']</span> ';
+      } else if (t.type === 'deleted') {
+        previewHtml += '<span class="import-deleted">[' + escHtml(t.name + beatStr) + ']</span> ';
+      }
+    }
+    previewHtml += '\n\n';
+  }
+
+  const nameChanges = allChanges.filter(c => c.nameChanged);
+  const insertedChanges = allChanges.filter(c => c.inserted);
+  const deletedChanges = allChanges.filter(c => c.deleted);
+  const deletedCount = deletedChanges.length + sectionPreviews.reduce((n, s) => n + s.tokens.filter(t => t.type === 'section-deleted').length, 0);
+  let summary = '<strong>Summary:</strong> ';
+  summary += allChanges.length + ' change' + (allChanges.length !== 1 ? 's' : '');
+  if (nameChanges.length) summary += ', ' + nameChanges.length + ' upgrade' + (nameChanges.length !== 1 ? 's' : '');
+  if (insertedChanges.length) summary += ', <span class="import-inserted">' + insertedChanges.length + ' inserted</span>';
+  if (deletedCount) summary += ', <span class="import-deleted">' + deletedCount + ' deleted</span>';
+  previewHtml = summary + '\n\n' + previewHtml;
+
+  previewEl.innerHTML = previewHtml;
+  previewEl.style.display = 'block';
+  applyRow.style.display = 'flex';
+}
+
+function escHtml(s) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function enterImportMode() {
+  beatEntryMode = false;
+  alignmentMode = false;
+  defineMode = false;
+  importMode = true;
+  importData = null;
+  importMergedContent = '';
+  document.getElementById('importPanel').classList.add('visible');
+  document.getElementById('importFile').value = '';
+  document.getElementById('importSongInfo').innerHTML = '';
+  document.getElementById('importSectionMap').innerHTML = '';
+  document.getElementById('importPreview').style.display = 'none';
+  document.getElementById('importPreview').innerHTML = '';
+  document.getElementById('importApplyRow').style.display = 'none';
+  document.getElementById('importStatus').textContent = 'Select an iReal Pro HTML file';
+  updateModeHint();
+  updateEditorHighlight();
+}
+
+function cancelImport() {
+  importMode = false;
+  importData = null;
+  importMergedContent = '';
+  document.getElementById('importPanel').classList.remove('visible');
+  updateModeHint();
+  updateEditorHighlight();
+}
+
+function applyImport() {
+  if (!importMergedContent) return;
+  const textarea = document.getElementById('chordProInput');
+  textarea.value = importMergedContent;
+  textarea.dispatchEvent(new Event('input'));
+  cancelImport();
+}
+
+document.addEventListener('change', (e) => {
+  if (e.target.id === 'importFile') handleImportFile(e);
+});
+
+function handleImportFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const html = e.target.result;
+    const url = extractIRealUrl(html);
+    if (!url) {
+      document.getElementById('importStatus').textContent = 'Error: No iReal Pro data found in file';
+      return;
+    }
+    const decoded = decodeObfusc50(url);
+    const parsed = parseIRealChords(decoded);
+
+    const textarea = document.getElementById('chordProInput');
+    const editorSections = getEditorSections(textarea.value);
+
+    const mapping = buildSectionMap(parsed.sections, editorSections);
+
+    importData = { irealSections: parsed.sections, editorSections, mapping, parsed };
+
+    let infoHtml = '<div class="import-song-info">';
+    infoHtml += '<strong>' + escHtml(parsed.title) + '</strong>';
+    if (parsed.composer) infoHtml += ' — ' + escHtml(parsed.composer);
+    infoHtml += '<br/>Key: ' + escHtml(parsed.key) + ' | Style: ' + escHtml(parsed.style) + ' | Time: ' + escHtml(parsed.timeSig);
+    infoHtml += ' | Sections: ' + parsed.sections.length;
+    infoHtml += '</div>';
+    const hasSectionLabels = editorSections.some(s => s.label && s.label !== 'All');
+    if (!hasSectionLabels) {
+      infoHtml += '<div class="import-warning">⚠ No section labels found in editor. Add section labels (e.g., {Verse:}, {Bridge:}) for accurate chord mapping.</div>';
+    }
+    document.getElementById('importSongInfo').innerHTML = infoHtml;
+    document.getElementById('importStatus').textContent = 'Loaded successfully';
+
+    renderImportSectionMap(parsed.sections, editorSections, mapping);
+    generateImportPreview();
+  };
+  reader.readAsText(file);
 }
 
 function smartPasteConvert(text) {
@@ -4607,6 +5578,13 @@ chordInput.addEventListener('keydown', (e) => {
       return;
     }
   }
+  if (importMode) {
+    if (e.key === 'Escape' || (e.ctrlKey && e.key.toLowerCase() === 'i')) {
+      e.preventDefault();
+      cancelImport();
+      return;
+    }
+  }
   if (alignmentMode) {
     if (e.key === 'Escape' || (e.ctrlKey && e.key.toLowerCase() === 'm')) {
       e.preventDefault();
@@ -4688,6 +5666,9 @@ chordInput.addEventListener('keydown', (e) => {
     beatEntryMode = false;
     defineMode = false;
     enterAlignmentMode(chordInput);
+  } else if (e.ctrlKey && e.key.toLowerCase() === 'i') {
+    e.preventDefault();
+    enterImportMode();
   } else if (e.ctrlKey && !e.shiftKey && e.key === 'ArrowRight') {
     e.preventDefault();
     navigateChord(chordInput, 1);

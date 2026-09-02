@@ -1,0 +1,17 @@
+{title: All The Things You Are}
+{artist: Jerome Kern}
+{time: 4/4}
+{define: Dbmmaj7 frets 1 1 0 3}
+{Verse 1:}
+[Fm7:4]You [Bbm7:4]are the [Eb7:4]promised kiss of [Abmaj7:4]springtime
+That [Dbmaj7:4]makes the lonely [Dm7:2][G7:2]winter seem [Cmaj7:8]long
+{Verse 2:}
+[Cm7:4]You [Fm7:4]are the [Bb7:4]breathless hush of [Ebmaj7:4]evening
+That [Abmaj7:4]trembles on the [Am7:2]brink of a [D7:2]lovely [Gmaj7:8]song
+{Bridge:}
+You are the [Am7:4]angel glow [D7:4]  That lights a [Gmaj7:8]star
+The dearest [F#m7b5:4]things I know [B7b9:4]  Are what you [Emaj7:4]are[C7b13:4]
+{Verse 3:}
+[Fm7:4]Some [Bbm7:4]day my [Eb7:4]happy arms will[Abmaj7:4] hold you
+And [Dbmaj7:4]some - [Dbmmaj7:4]day       I'll [Cm7:4]know that moment [Bdim7:4]divine
+When [Bbm7:4]all the things [Eb7:4]you are are [Abmaj7:4]mine[Gm7b5:2][C7b9:2]
