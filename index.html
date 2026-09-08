@@ -532,6 +532,14 @@ const ChordLibrary = (() => {
     return -1;
   }
 
+  const QUALITY_ALIASES = {
+    'mmaj7': 'mMaj7', 'm(maj7)': 'mMaj7', 'm(Maj7)': 'mMaj7',
+  };
+
+  function normalizeQuality(q) {
+    return QUALITY_ALIASES[q] || q;
+  }
+
   function parseChord(name) {
     if (!name) return null;
     let root, quality;
@@ -542,6 +550,7 @@ const ChordLibrary = (() => {
       root = name[0];
       quality = name.substring(1);
     }
+    quality = normalizeQuality(quality);
     const rootIndex = normalizeRootIndex(root);
     if (rootIndex < 0) return null;
     return { root, quality, rootIndex };
@@ -665,6 +674,20 @@ const ChordLibrary = (() => {
     'Am7':  [[0,0,0,0], [2,4,3,3]],
     'Bbm7': [[1,1,1,1], [3,5,4,4]],
     'Bm7':  [[2,2,2,2]],
+
+    // === Minor Major 7 ===
+    'CmMaj7':  [[0,3,3,2], [4,3,3,3]],
+    'DbmMaj7': [[1,1,0,3], [3,2,2,1]],
+    'DmMaj7':  [[2,1,1,0], [2,2,1,4]],
+    'EbmMaj7': [[3,2,2,1], [3,3,2,5]],
+    'EmMaj7':  [[0,3,3,2]],
+    'FmMaj7':  [[1,0,0,3]],
+    'F#mMaj7': [[2,1,1,0]],
+    'GmMaj7':  [[0,2,2,1]],
+    'AbmMaj7': [[1,3,3,2]],
+    'AmMaj7':  [[1,0,0,0]],
+    'BbmMaj7': [[2,1,1,1], [3,1,1,0]],
+    'BmMaj7':  [[3,2,2,2]],
 
     // === Diminished ===
     'Cdim':  [[0,3,2,3]],
@@ -819,6 +842,20 @@ const ChordLibrary = (() => {
     'A9':  [[0,1,0,2], [4,4,3,4]],
     'Bb9': [[1,2,1,3], [5,5,4,5]],
     'B9':  [[2,3,2,4], [6,6,5,6]],
+
+    // === Dominant 13 ===
+    'C13':  [[2,2,0,1], [3,4,5,5]],
+    'Db13': [[3,3,1,2], [4,5,6,6]],
+    'D13':  [[2,0,2,2], [4,4,2,3]],
+    'Eb13': [[0,1,1,3], [3,1,3,3] ],
+    'E13':  [[1,2,2,4], [4,2,4,4]],
+    'F13':  [[2,3,3,5], [5,3,5,5]],
+    'F#13': [[1,3,0,1], [3,4,4,6]],
+    'G13':  [[4,5,0,0], [4,5,5,7]],
+    'Ab13': [[5,6,6,8]],
+    'A13':  [[0,1,2,2]],
+    'Bb13': [[1,2,3,3]],
+    'B13':  [[2,3,4,4]],
 
     // === Major 9 ===
     'Cmaj9': [[0,2,0,2], [4,4,3,5], [4,2,0,3]],
@@ -2459,8 +2496,8 @@ function convertIRealChord(token) {
   const slashIdx = token.indexOf('/');
   let main = slashIdx > 0 ? token.substring(0, slashIdx) : token;
   const bass = slashIdx > 0 ? token.substring(slashIdx) : '';
-  if (main.match(/-\^7/)) { main = main.replace(/-\^7/, 'm(maj7)'); }
-  else if (main.match(/-\^/)) { main = main.replace(/-\^/, 'm(maj7)'); }
+  if (main.match(/-\^7/)) { main = main.replace(/-\^7/, 'mMaj7'); }
+  else if (main.match(/-\^/)) { main = main.replace(/-\^/, 'mMaj7'); }
   else {
     main = main.replace(/\^7/, 'maj7');
     main = main.replace(/\^/, 'maj7');
