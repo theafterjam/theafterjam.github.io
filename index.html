@@ -242,8 +242,29 @@
     #editArea { top: 42px; }
   }
 
+  .voicing-mode-active { outline: 2px solid #e67e22; outline-offset: 2px; border-radius: 4px; background: rgba(230, 126, 34, 0.1); }
+  .voicing-overridden .chord, .voicing-overridden .ireal-cell-label, .voicing-overridden .chord-chart-label {
+    text-decoration: underline; text-decoration-color: #e67e22; text-underline-offset: 2px;
+  }
+  .voicing-popup {
+    display: none; position: fixed; z-index: 100; background: #fff; border: 2px solid #e67e22;
+    border-radius: 8px; padding: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.2); min-width: 120px; font-size: 14px;
+  }
+  .voicing-popup-title { font-weight: 700; color: #333; margin-bottom: 6px; text-align: center; }
+  .voicing-popup-diagram { display: block; margin: 0 auto 6px; }
+  .voicing-popup-nav { display: flex; justify-content: center; gap: 12px; margin-bottom: 6px; }
+  .voicing-popup-nav button {
+    background: #f0f0f0; border: 1px solid #ccc; border-radius: 4px; padding: 4px 12px; cursor: pointer; font-size: 1em;
+  }
+  .voicing-popup-nav button:hover { background: #e0e0e0; }
+  .voicing-popup-apply-all {
+    display: block; width: 100%; background: #e67e22; color: #fff; border: none; border-radius: 4px;
+    padding: 6px; cursor: pointer; font-weight: 600; font-size: 0.85em;
+  }
+  .voicing-popup-apply-all:hover { background: #d35400; }
+
   @media print {
-    .sidebar, .toolbar, #editArea, #filePicker, .sidebar-toggle, .sidebar-overlay, .float-scroll { display: none !important; }
+    .sidebar, .toolbar, #editArea, #filePicker, .sidebar-toggle, .sidebar-overlay, .float-scroll, .voicing-popup { display: none !important; }
     body { overflow: visible; height: auto; }
     .app-layout { display: block; height: auto; }
     .main-content { overflow: visible; }
@@ -3086,6 +3107,89 @@ let currentPass = 0;
 let chordToPlayIndex = [];
 let chordAnalysis = [];
 
+// --- Voicing Override System ---
+const VOICING_STORAGE_KEY = 'uke-voicing-overrides';
+let voicingOverrides = {};
+let voicingModeActive = false;
+let voicingModeElement = null;
+let voicingModeLogicalIndex = null;
+let voicingModeChordName = null;
+let voicingModeCurrentVI = null;
+let voicingModeOriginalVI = null;
+let voicingModePopup = null;
+let voicingModeTuning = null;
+
+function saveVoicingOverrides() {
+  try { localStorage.setItem(VOICING_STORAGE_KEY, JSON.stringify(voicingOverrides)); } catch(e) {}
+}
+
+function loadVoicingOverrides() {
+  try {
+    const data = localStorage.getItem(VOICING_STORAGE_KEY);
+    if (data) voicingOverrides = JSON.parse(data);
+  } catch(e) {}
+}
+
+function getOverrideBucket(songId, tuning, transpose) {
+  if (!voicingOverrides[songId]) voicingOverrides[songId] = {};
+  if (!voicingOverrides[songId][tuning]) voicingOverrides[songId][tuning] = {};
+  const tKey = String(transpose);
+  if (!voicingOverrides[songId][tuning][tKey]) {
+    voicingOverrides[songId][tuning][tKey] = { type: {}, instance: {} };
+  }
+  return voicingOverrides[songId][tuning][tKey];
+}
+
+function setInstanceOverride(songId, tuning, transpose, logicalIndex, vi) {
+  const bucket = getOverrideBucket(songId, tuning, transpose);
+  bucket.instance[String(logicalIndex)] = vi;
+}
+
+function setTypeOverride(songId, tuning, transpose, chordName, vi) {
+  const bucket = getOverrideBucket(songId, tuning, transpose);
+  bucket.type[chordName] = vi;
+}
+
+function resolveVoicingIndex(songId, tuning, transpose, transposedChordName, logicalIndex, textFileVI) {
+  const sid = songId || '__unsaved__';
+  if (!voicingOverrides[sid]) return textFileVI || 0;
+  const tuningMap = voicingOverrides[sid][tuning];
+  if (!tuningMap) return textFileVI || 0;
+  const bucket = tuningMap[String(transpose)];
+  if (!bucket) return textFileVI || 0;
+  const instKey = String(logicalIndex);
+  if (bucket.instance && bucket.instance[instKey] !== undefined) return bucket.instance[instKey];
+  if (bucket.type && bucket.type[transposedChordName] !== undefined) return bucket.type[transposedChordName];
+  return textFileVI || 0;
+}
+
+function resetSongOverrides(songId) {
+  const sid = songId || '__unsaved__';
+  delete voicingOverrides[sid];
+  saveVoicingOverrides();
+}
+
+function clearInstanceOverridesForChordName(songId, tuning, transpose, chordName) {
+  const sid = songId || '__unsaved__';
+  const text = document.getElementById('chordProInput').value;
+  const song = parseChordPro(text);
+  const semitones = transpose;
+  const useFlats = semitones < 0;
+  const bucket = getOverrideBucket(sid, tuning, transpose);
+  let logicalIndex = 0;
+  for (const line of song.lines) {
+    if (line.type !== 'chordline') continue;
+    for (const seg of line.segments) {
+      if (!seg.chord) continue;
+      const transposed = ChordLibrary.transposeChord(seg.chord, semitones, useFlats);
+      if (transposed === chordName) {
+        delete bucket.instance[String(logicalIndex)];
+      }
+      logicalIndex++;
+    }
+  }
+}
+
 function toggleMobileSettings() {
   const panel = document.getElementById('mobileSettingsPanel');
   panel.classList.toggle('visible');
@@ -3618,6 +3722,13 @@ document.addEventListener('keydown', (e) => {
   const tag = document.activeElement.tagName;
   if (tag === 'TEXTAREA' || tag === 'INPUT' || tag === 'SELECT') return;
 
+  if (voicingModeActive) {
+    if (e.key === 'Escape') { e.preventDefault(); exitVoicingMode(); return; }
+    if (e.key === 'ArrowUp') { e.preventDefault(); cycleVoicing(-1); return; }
+    if (e.key === 'ArrowDown') { e.preventDefault(); cycleVoicing(1); return; }
+    return;
+  }
+
   if (e.key === 'Escape') {
     e.preventDefault();
     if (playbackTimeout) stopPlayback();
@@ -3633,6 +3744,24 @@ document.addEventListener('keydown', (e) => {
     e.preventDefault();
     floatAdjustSpeed(-1);
   }
+});
+
+let lastWheelCycleTime = 0;
+function handleVoicingWheel(e) {
+  if (!voicingModeActive) return;
+  e.preventDefault();
+  const now = Date.now();
+  if (now - lastWheelCycleTime < 200) return;
+  lastWheelCycleTime = now;
+  cycleVoicing(e.deltaY > 0 ? 1 : -1);
+}
+document.getElementById('output')?.addEventListener('wheel', handleVoicingWheel, { passive: false });
+
+document.addEventListener('click', (e) => {
+  if (!voicingModeActive) return;
+  if (voicingModePopup && voicingModePopup.contains(e.target)) return;
+  if (voicingModeElement && voicingModeElement.contains(e.target)) return;
+  exitVoicingMode();
 });
 
 // --- Touch: single tap toggles pause, double-tap goes to top ---
@@ -3964,16 +4093,20 @@ function collectChords(song, semitones) {
   const useFlats = semitones < 0;
   const seen = new Set();
   const chords = [];
+  const tuning = currentTuning === 'BOTH' ? 'GCEA' : currentTuning;
+  let logicalIndex = 0;
   for (const line of song.lines) {
     if (line.type !== 'chordline') continue;
     for (const seg of line.segments) {
       if (!seg.chord) continue;
       const transposed = ChordLibrary.transposeChord(seg.chord, semitones, useFlats);
-      const key = transposed + '|' + seg.voicingIndex;
+      const vi = resolveVoicingIndex(activeSongId, tuning, semitones, transposed, logicalIndex, seg.voicingIndex);
+      const key = transposed + '|' + vi;
       if (!seen.has(key)) {
         seen.add(key);
-        chords.push({ name: transposed, voicingIndex: seg.voicingIndex });
+        chords.push({ name: transposed, voicingIndex: vi });
       }
+      logicalIndex++;
     }
   }
   return chords;
@@ -4123,15 +4256,172 @@ function renderSong() {
 }
 
 function registerChordClickHandlers() {
-  for (const item of playbackElements) {
+  const allItems = [...playbackElements, ...altPlaybackElements];
+  for (const item of allItems) {
+    let clickTimer = null;
+    item.element.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      clickTimer = setTimeout(() => {
+        if (item.element.dataset.chordName) enterVoicingMode(item.element);
+      }, 250);
+    });
     item.element.addEventListener('dblclick', (e) => {
       e.preventDefault();
+      clearTimeout(clickTimer);
+      exitVoicingMode();
       const idx = parseInt(item.element.dataset.playIndex);
       if (playbackTimeout) stopPlayback();
       startPlayback(idx);
     });
     item.element.style.cursor = 'pointer';
   }
+}
+
+function enterVoicingMode(element) {
+  exitVoicingMode();
+  const chordName = element.dataset.chordName;
+  const tuning = element.dataset.tuning || currentTuning;
+  const voicingCount = ChordLibrary.getVoicingCount(chordName, tuning);
+  if (voicingCount <= 1) return;
+  voicingModeActive = true;
+  voicingModeElement = element;
+  voicingModeLogicalIndex = parseInt(element.dataset.logicalIndex);
+  voicingModeChordName = chordName;
+  voicingModeCurrentVI = parseInt(element.dataset.voicingIndex);
+  voicingModeOriginalVI = voicingModeCurrentVI;
+  voicingModeTuning = tuning;
+  element.classList.add('voicing-mode-active');
+  showVoicingPopup(element, chordName, voicingModeCurrentVI, voicingCount, tuning);
+}
+
+function exitVoicingMode() {
+  if (!voicingModeActive) return;
+  voicingModeActive = false;
+  if (voicingModeElement) voicingModeElement.classList.remove('voicing-mode-active');
+  if (voicingModePopup) voicingModePopup.style.display = 'none';
+  voicingModeElement = null;
+  voicingModeLogicalIndex = null;
+  voicingModeChordName = null;
+  voicingModeCurrentVI = null;
+  voicingModeOriginalVI = null;
+  voicingModeTuning = null;
+  saveVoicingOverrides();
+}
+
+function showVoicingPopup(element, chordName, currentVI, voicingCount, tuning) {
+  if (!voicingModePopup) {
+    voicingModePopup = document.createElement('div');
+    voicingModePopup.className = 'voicing-popup';
+    voicingModePopup.addEventListener('wheel', handleVoicingWheel, { passive: false });
+    document.body.appendChild(voicingModePopup);
+  }
+  updateVoicingPopup(chordName, currentVI, voicingCount, tuning);
+  const rect = element.getBoundingClientRect();
+  voicingModePopup.style.display = 'block';
+  voicingModePopup.style.left = Math.min(rect.left, window.innerWidth - 160) + 'px';
+  voicingModePopup.style.top = (rect.bottom + 4) + 'px';
+  if (rect.bottom + 200 > window.innerHeight) {
+    voicingModePopup.style.top = (rect.top - voicingModePopup.offsetHeight - 4) + 'px';
+  }
+}
+
+function updateVoicingPopup(chordName, currentVI, voicingCount, tuning) {
+  if (!voicingModePopup) return;
+  voicingModePopup.innerHTML = '';
+  const title = document.createElement('div');
+  title.className = 'voicing-popup-title';
+  title.textContent = chordName + ' — Voicing ' + (currentVI + 1) + '/' + voicingCount;
+  voicingModePopup.appendChild(title);
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.classList.add('voicing-popup-diagram');
+  const frets = ChordLibrary.getChordFrets(chordName, tuning, currentVI);
+  ChordRenderer.render(svg, chordName, frets, tuning);
+  voicingModePopup.appendChild(svg);
+  const nav = document.createElement('div');
+  nav.className = 'voicing-popup-nav';
+  const upBtn = document.createElement('button');
+  upBtn.textContent = '▲';
+  upBtn.onclick = (e) => { e.stopPropagation(); cycleVoicing(-1); };
+  const downBtn = document.createElement('button');
+  downBtn.textContent = '▼';
+  downBtn.onclick = (e) => { e.stopPropagation(); cycleVoicing(1); };
+  nav.appendChild(upBtn);
+  nav.appendChild(downBtn);
+  voicingModePopup.appendChild(nav);
+  if (currentVI !== voicingModeOriginalVI) {
+    const applyAll = document.createElement('button');
+    applyAll.className = 'voicing-popup-apply-all';
+    applyAll.textContent = 'Apply to all ' + chordName;
+    applyAll.onclick = (e) => { e.stopPropagation(); applyVoicingToAll(); };
+    voicingModePopup.appendChild(applyAll);
+  }
+  const sid = activeSongId || '__unsaved__';
+  if (voicingOverrides[sid]) {
+    const resetBtn = document.createElement('button');
+    resetBtn.className = 'voicing-popup-apply-all';
+    resetBtn.style.marginTop = '8px';
+    resetBtn.textContent = 'Reset';
+    resetBtn.onclick = (e) => {
+      e.stopPropagation();
+      if (confirm('Reset all voicing overrides for this song?')) {
+        resetSongOverrides(sid);
+        exitVoicingMode();
+        renderSong();
+      }
+    };
+    voicingModePopup.appendChild(resetBtn);
+  }
+}
+
+function cycleVoicing(direction) {
+  if (!voicingModeActive) return;
+  const voicingCount = ChordLibrary.getVoicingCount(voicingModeChordName, voicingModeTuning);
+  if (voicingCount <= 1) return;
+  voicingModeCurrentVI = ((voicingModeCurrentVI + direction) % voicingCount + voicingCount) % voicingCount;
+  const sid = activeSongId || '__unsaved__';
+  setInstanceOverride(sid, voicingModeTuning, getTranspose(), voicingModeLogicalIndex, voicingModeCurrentVI);
+  updateChordInPlace(voicingModeElement, voicingModeChordName, voicingModeCurrentVI, voicingModeTuning);
+  updateVoicingPopup(voicingModeChordName, voicingModeCurrentVI, voicingCount, voicingModeTuning);
+  updateChordStrip();
+}
+
+function updateChordInPlace(element, chordName, vi, tuning) {
+  element.dataset.voicingIndex = vi;
+  const frets = ChordLibrary.getChordFrets(chordName, tuning, vi);
+  const existingSvg = element.querySelector('.chord-inline-diagram, .ireal-cell-diagram');
+  if (existingSvg) {
+    ChordRenderer.render(existingSvg, chordName, frets, tuning, { hideLabel: true });
+  }
+  element.classList.add('voicing-overridden');
+}
+
+function updateChordStrip() {
+  const strip = document.querySelector('.chord-strip');
+  if (!strip) return;
+  const text = document.getElementById('chordProInput').value;
+  const song = parseChordPro(text);
+  const semitones = getTranspose();
+  const tuning = currentTuning === 'BOTH' ? 'GCEA' : currentTuning;
+  const usedChords = collectChords(song, semitones);
+  strip.innerHTML = '';
+  for (const c of usedChords) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.classList.add('chord-diagram');
+    const frets = ChordLibrary.getChordFrets(c.name, tuning, c.voicingIndex);
+    const label = c.voicingIndex > 0 ? c.name + ' (v' + c.voicingIndex + ')' : c.name;
+    ChordRenderer.render(svg, label, frets, tuning);
+    strip.appendChild(svg);
+  }
+}
+
+function applyVoicingToAll() {
+  if (!voicingModeActive) return;
+  const sid = activeSongId || '__unsaved__';
+  setTypeOverride(sid, voicingModeTuning, getTranspose(), voicingModeChordName, voicingModeCurrentVI);
+  clearInstanceOverridesForChordName(sid, voicingModeTuning, getTranspose(), voicingModeChordName);
+  exitVoicingMode();
+  renderSong();
 }
 
 function toggleAnalysis() {
@@ -4286,23 +4576,30 @@ function renderLyrics(song, semitones, useFlats, output) {
         wrap.appendChild(marker);
       } else if (seg.chord) {
         chordToPlayIndex[logicalChordIndex] = playIndex;
+        const thisLogical = logicalChordIndex;
         logicalChordIndex++;
         const transposed = ChordLibrary.transposeChord(seg.chord, semitones, useFlats);
+        const vi = resolveVoicingIndex(activeSongId, currentTuning, semitones, transposed, thisLogical, seg.voicingIndex);
         const anticipate = text.length > 0 && text[0] === ' ';
         const displayText = anticipate ? text.substring(1) : text;
         const pair = document.createElement('span');
         pair.className = 'chord-pair';
         pair.setAttribute('data-play-index', playIndex);
         pair.setAttribute('data-play-beats', seg.beats || 1);
+        pair.setAttribute('data-logical-index', thisLogical);
+        pair.setAttribute('data-chord-name', transposed);
+        pair.setAttribute('data-voicing-index', vi);
+        pair.setAttribute('data-tuning', currentTuning);
         playIndex++;
         if (anticipate) pair.classList.add('chord-anticipate');
+        if (vi !== (seg.voicingIndex || 0)) pair.classList.add('voicing-overridden');
         if (currentChordFormat === 'chart') {
           const chartLabel = document.createElement('span');
           chartLabel.className = 'chord-chart-label';
           chartLabel.textContent = transposed;
           pair.appendChild(chartLabel);
           const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-          const frets = (currentTuning === 'GCEA' && song.defines[transposed]) || ChordLibrary.getChordFrets(transposed, currentTuning, seg.voicingIndex);
+          const frets = (currentTuning === 'GCEA' && song.defines[transposed]) || ChordLibrary.getChordFrets(transposed, currentTuning, vi);
           ChordRenderer.render(svg, transposed, frets, currentTuning, { hideLabel: true });
           svg.classList.add('chord-inline-diagram');
           pair.appendChild(svg);
@@ -4389,7 +4686,9 @@ function renderGrid(song, semitones, useFlats, output) {
           const hasBeats = seg.beats > 0;
           const beats = hasBeats ? seg.beats : 1;
           if (!hasBeats) hasMissingBeats = true;
-          const chordObj = { name, beats, hasBeats, text: seg.text || '', voicingIndex: seg.voicingIndex, inserted: seg.inserted };
+          const thisLogical = logicalChordIndex++;
+          const vi = resolveVoicingIndex(activeSongId, currentTuning, semitones, name, thisLogical, seg.voicingIndex);
+          const chordObj = { name, beats, hasBeats, text: seg.text || '', voicingIndex: vi, textFileVI: seg.voicingIndex, logicalIndex: thisLogical, inserted: seg.inserted };
           if (gridCodaMarkerPending) { chordObj.codaMarkerBefore = true; gridCodaMarkerPending = false; }
           lineChords.push(chordObj);
           foundChord = true;
@@ -4503,8 +4802,7 @@ function renderGrid(song, semitones, useFlats, output) {
         marker.textContent = '\u{1F441} Coda';
         measureEl.appendChild(marker);
       }
-      chordToPlayIndex[logicalChordIndex] = playIndex;
-      logicalChordIndex++;
+      chordToPlayIndex[ch.logicalIndex] = playIndex;
       if (showLyrics && ch.leadingText) {
         if (lastLyricCell) {
           const existing = lastLyricCell.textContent;
@@ -4536,10 +4834,15 @@ function renderGrid(song, semitones, useFlats, output) {
         cell.className = 'ireal-cell';
         cell.setAttribute('data-play-index', playIndex);
         cell.setAttribute('data-play-beats', take);
+        cell.setAttribute('data-logical-index', ch.logicalIndex);
+        cell.setAttribute('data-chord-name', ch.name);
+        cell.setAttribute('data-voicing-index', ch.voicingIndex);
+        cell.setAttribute('data-tuning', currentTuning);
         playIndex++;
         if (!ch.hasBeats) cell.classList.add('no-beats');
         if (take < 1) cell.classList.add('half-beat');
         cell.style.flex = take;
+        if (ch.voicingIndex !== (ch.textFileVI || 0)) cell.classList.add('voicing-overridden');
 
         if (ch.inserted) cell.style.color = '#e67e22';
         if (chartMode && take >= 1) {
@@ -4548,7 +4851,7 @@ function renderGrid(song, semitones, useFlats, output) {
           label.textContent = ch.name;
           cell.appendChild(label);
           const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-          const frets = (currentTuning === 'GCEA' && song.defines[ch.name]) || ChordLibrary.getChordFrets(ch.name, currentTuning, ch.voicingIndex || 0);
+          const frets = (currentTuning === 'GCEA' && song.defines[ch.name]) || ChordLibrary.getChordFrets(ch.name, currentTuning, ch.voicingIndex);
           ChordRenderer.render(svg, ch.name, frets, currentTuning, { hideLabel: true });
           svg.classList.add('ireal-cell-diagram');
           cell.appendChild(svg);
@@ -5842,6 +6145,7 @@ chordInput.addEventListener('paste', (e) => {
 });
 
 loadLibrary();
+loadVoicingOverrides();
 loadRemoteSongs();
 updateEditorHighlight();
 setTuning(currentTuning);
