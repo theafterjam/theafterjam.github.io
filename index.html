@@ -3928,8 +3928,7 @@ let currentSongRiffs = {};
 let riffPreRenderedBuffers = {};
 let activeRiffSource = null;
 let activeRiffName = null;
-let activeRiffAnimId = null;
-let activeRiffStartTime = 0;
+let activeRiffBeatInRiff = 0;
 let activeRiffFlat = null;
 let activeRiffData = null;
 
@@ -4039,17 +4038,12 @@ function startRiffForChord(riffName, chordBeats) {
   if (!isRiffAvailable()) return;
   const buf = riffPreRenderedBuffers[riffName];
   if (!buf) return;
-  const ctx = getAudioCtx();
-  activeRiffName = riffName;
-  activeRiffSource = ctx.createBufferSource();
-  activeRiffSource.buffer = buf;
   const riff = currentSongRiffs[riffName];
-  activeRiffSource.loop = true;
-  activeRiffSource.connect(ctx.destination);
-  activeRiffStartTime = ctx.currentTime;
-  activeRiffSource.start(activeRiffStartTime);
+  activeRiffName = riffName;
   activeRiffFlat = riffFlattenTokens(riff);
   activeRiffData = riff;
+  activeRiffBeatInRiff = 0;
+  triggerRiffBuffer();
   const showRiffs = localStorage.getItem('uke-show-riffs') !== 'false';
   if (showRiffs) {
     riffPopupRiff = riff;
@@ -4065,31 +4059,50 @@ function startRiffForChord(riffName, chordBeats) {
     document.getElementById('riffPopupStopBtn').style.display = 'none';
     document.getElementById('riffPopup').classList.add('visible');
     document.getElementById('riffPopupOverlay').classList.remove('visible');
-    function animateRiff() {
-      if (!activeRiffSource) return;
-      const elapsed = ctx.currentTime - activeRiffStartTime;
-      const riffDur = riff.beats * secPerBeat;
-      const pos = ((elapsed % riffDur) + riffDur) % riffDur;
-      const beat = pos / secPerBeat;
-      const dots = document.querySelectorAll('#riffPopupBeats .riff-beat-dot');
-      dots.forEach((d, i) => d.classList.toggle('active', i === Math.floor(beat)));
-      riffClearDots();
-      for (const token of activeRiffFlat) {
-        const tStart = token.actualStart, tEnd = tStart + token.actualDuration;
-        if (beat >= tStart && beat < tEnd && token.type === 'note' && token.notes) {
-          for (const n of token.notes) riffActivateDot(n.string, n.fret);
-        }
-      }
-      activeRiffAnimId = requestAnimationFrame(animateRiff);
+  }
+  updateRiffVisuals();
+}
+
+function triggerRiffBuffer() {
+  if (activeRiffSource) { try { activeRiffSource.stop(); } catch(e) {} }
+  const buf = riffPreRenderedBuffers[activeRiffName];
+  if (!buf) return;
+  const ctx = getAudioCtx();
+  activeRiffSource = ctx.createBufferSource();
+  activeRiffSource.buffer = buf;
+  activeRiffSource.loop = false;
+  activeRiffSource.connect(ctx.destination);
+  activeRiffSource.start();
+}
+
+function tickActiveRiff() {
+  if (!activeRiffData) return;
+  activeRiffBeatInRiff++;
+  if (activeRiffBeatInRiff >= activeRiffData.beats) {
+    activeRiffBeatInRiff = 0;
+    triggerRiffBuffer();
+  }
+  updateRiffVisuals();
+}
+
+function updateRiffVisuals() {
+  if (!activeRiffData || !activeRiffFlat) return;
+  const beat = activeRiffBeatInRiff;
+  const dots = document.querySelectorAll('#riffPopupBeats .riff-beat-dot');
+  dots.forEach((d, i) => d.classList.toggle('active', i === Math.floor(beat)));
+  riffClearDots();
+  for (const token of activeRiffFlat) {
+    const tStart = token.actualStart, tEnd = tStart + token.actualDuration;
+    if (beat >= tStart && beat < tEnd && token.type === 'note' && token.notes) {
+      for (const n of token.notes) riffActivateDot(n.string, n.fret);
     }
-    activeRiffAnimId = requestAnimationFrame(animateRiff);
   }
 }
 
 function stopActiveRiff() {
-  if (activeRiffAnimId) { cancelAnimationFrame(activeRiffAnimId); activeRiffAnimId = null; }
   if (activeRiffSource) { try { activeRiffSource.stop(); } catch(e) {} activeRiffSource = null; }
   activeRiffName = null; activeRiffFlat = null; activeRiffData = null;
+  activeRiffBeatInRiff = 0;
   riffClearDots();
   document.querySelectorAll('#riffPopupBeats .riff-beat-dot').forEach(d => d.classList.remove('active'));
   document.getElementById('riffPopup').classList.remove('visible');
@@ -4101,6 +4114,7 @@ let audioCtx = null;
 let playbackBeatsPerMeasure = 4;
 let playbackBeatInMeasure = 0;
 let playbackBeatInChord = 0;
+let playbackInCountOff = false;
 
 function getAudioCtx() {
   if (!audioCtx) {
@@ -4224,6 +4238,7 @@ function startPlayback(startIndex) {
   }
   updateBeatDisplay();
   updatePassDisplay();
+  playbackInCountOff = true;
   highlightCurrentChord();
   getAudioCtx();
   preRenderSongRiffs().then(() => {
@@ -4248,11 +4263,17 @@ function scheduleCountOff() {
       updateBeatDisplay();
       scheduleCountOff();
     } else {
+      playbackInCountOff = false;
       playbackBeatInMeasure = 0;
       updateBeatDisplay();
       playClick(true);
       playBass();
       playDrumBeat();
+      // Start riff now that count-off is done
+      if (playbackIndex < playbackElements.length) {
+        const rn = playbackElements[playbackIndex].element.dataset.riffName;
+        if (rn && riffPreRenderedBuffers[rn]) startRiffForChord(rn, playbackElements[playbackIndex].beats);
+      }
       scheduleBeatTick();
     }
   }, ms);
@@ -4260,6 +4281,7 @@ function scheduleCountOff() {
 
 function stopPlayback() {
   if (playbackTimeout) { clearTimeout(playbackTimeout); playbackTimeout = null; }
+  playbackInCountOff = false;
   stopActiveRiff();
   riffPreRenderedBuffers = {};
   document.querySelectorAll('.chord-playing').forEach(el => el.classList.remove('chord-playing'));
@@ -4290,9 +4312,9 @@ function highlightCurrentChord() {
   current.element.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
   const riffName = current.element.dataset.riffName;
-  if (riffName && riffPreRenderedBuffers[riffName]) {
+  if (!playbackInCountOff && riffName && riffPreRenderedBuffers[riffName]) {
     startRiffForChord(riffName, current.beats);
-  } else {
+  } else if (!playbackInCountOff) {
     stopActiveRiff();
   }
 
@@ -4346,6 +4368,7 @@ function scheduleBeatTick() {
     playClick(playbackBeatInMeasure === 0);
     playBass();
     playDrumBeat();
+    tickActiveRiff();
     updateBeatDisplay();
     scheduleBeatTick();
   }, ms);
