@@ -1,0 +1,15 @@
+{title: La Vie En Rose}
+{artist: }
+{time: 4/4}
+{Verse 1}
+[G:4]Hold me close and hold me [Gmaj7:4]fast the magic spells you [G6:2]cast, this is la [Bbdim7:2]vie en [Am7:2]ros - [D7:2]e
+[Am7:4]When you kiss me heaven [D7:4]sighs, and though I close my [Am7:2]eyes, I [D7:1]see la [D7#5:1]vie en [G:2]rose[Am7:1][D7:1]
+[G:4]When you press me to your [Gmaj7:4]heart I'm in a world a-[G6:2]part, a [G7:2]world where roses [C:4]bloom
+[Cm6:4]And when you speak angels [G:4]sing from above, [A7:4]everyday words seem to [Am7:2]turn into [D7:1]love [D7b9:1]songs
+[G:4]Give your heart and soul to [Gmaj7:4]me and life will always [Am7:2]be la [D7:2]vie en [Gmaj7:4]rose.
+{Verse 2:}
+[G:4]Quand elle me prend dans ses [Gmaj7:4]bras, elle me parle tout [G6:2]bas, je vois la [Bbdim7:2]vie en [Am7:2]ros - [D7:2]e
+[Am7:4]Elle me dit des mots d'a-[D7:4]mour, des mots de tous les [Am7:2]jours, et [D7:1]ca me [D7#5:1]fait quelque [G:2]chose[Am7:1][D7:1]
+[G:4]Elle est entrée dans mon [Gmaj7:4]coeur, une part de bon-[G6:2]heur, dont [G7:2]je connais la [C:4]cause.
+[Cm6:4]C'est elle pour moi, moi pour [G:4]elle dans la vie, [A7:4]elle me l'a dit, l'a jur-[Am7:2]é pour la [D7:1]vie[D7b9:1]
+[G:4]Et des que je l'aper - [Gmaj7:4]çois, alors je sens en [Am7:2]moi mon [D7:2]coeur qui [Gmaj7:4]bat

@@ -2,17 +2,19 @@ Title: Sweet Pea
 Artist: Amos Lee
 
 {Intro:} 
-[F] [A7] [Dm] [G7] [F] [D7] [G7] [C] [F] [D7] [G7] [C]
+[F:4]       [A7:4]        [Dm:4]       [G7:4] 
+[F:2][D7:2][G7:2][C:2][F:2][D7:2][G7:2][C:2]
 {Verse:}
-[F]Sweet pea, [A7]apple of my eye [Dm]Don't know when and [G7]I don't know why
-[F]You're the only [D7]reason I [G7]keep on [C]coming [F]home [D7] [G7] [C]
-[F]Sweet pea, what's [A7]all this about [Dm]Don't get your way all you [G7] do is fuss and pout
-[F]You're the only [D7]reason I [G7]keep on coming [F]home [D7] [G7] [C]
+[F:4]Sweet pea, [A7:4]apple of my eye [Dm:4]Don't know when and [G7:4]I don't know why
+[F:2]You're the only [D7:2]reason I [G7:2]keep on [C:2]coming [F:2]home [D7:2] [G7:2] [C:2]
+[F:4]Sweet pea, what's [A7:4]all this about [Dm:4]Don't get your way all you [G7:4] do is fuss and pout
+[F:2]You're the only [D7:2]reason I [G7:2]keep on coming [F:2]home [D7:2] [G7:2] [C:2]
 {Bridge:}
-I like the [A7]Rock of Gibraltar, I always seem to falter, and the [Dm]words just get in the way
-Oh I [G7]know I'm gonna crumble, I'm trying to stay humble, but I [C](Break) never think before I see
+I like the [A7:8]Rock of Gibraltar, I always seem to falter, and the [Dm:8]words just get in the way
+Oh I [G7:8]know I'm gonna crumble, I'm trying to stay humble, but I [C:8](Break) never think before I see
 {Instrumental:}
-[F] [A7] [Dm] [G7] [F] [D7] [G7] [C] [F] [D7] [G7] [C]
+[F:4]       [A7:4]        [Dm:4]       [G7:4] 
+[F:2][D7:2][G7:2][C:2][F:2][D7:2][G7:2][C:2]
 {Verse:}
 [F]Sweet pea, [A7]keeper of my soul, [Dm] I know sometimes I'm [G7]out of control
 [F]You're the only [D7]reason I [G7]keep on [C]coming, [F]You're the only [D7]reason I [G7]keep on [C]coming yeah

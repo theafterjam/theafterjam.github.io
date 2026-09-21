@@ -15,6 +15,11 @@
     "artist": "Gerald Marks and Seymour Simons (1931)"
   },
   {
+    "file": "Autumn Leaves.txt",
+    "title": "Autumn Leaves",
+    "artist": "Joseph Kosma"
+  },
+  {
     "file": "Bags' Groove.txt",
     "title": "Bags' Groove",
     "artist": "Milt Jackson"
@@ -70,6 +75,11 @@
     "artist": ""
   },
   {
+    "file": "I'll Fly Away.txt",
+    "title": "I'll Fly Away",
+    "artist": "Traditional"
+  },
+  {
     "file": "I'll See You in My Dreams.txt",
     "title": "I'll See You in My Dreams",
     "artist": "Isham Jones (1924)"
@@ -90,9 +100,19 @@
     "artist": "Harold Arlen"
   },
   {
+    "file": "La Vie En Rose.txt",
+    "title": "La Vie En Rose",
+    "artist": ""
+  },
+  {
     "file": "Little Sparrow.txt",
     "title": "Little Sparrow",
     "artist": "Dolly Parton"
+  },
+  {
+    "file": "Love Is A Rose.txt",
+    "title": "Love Is A Rose",
+    "artist": "Neil Young"
   },
   {
     "file": "Meet me, Midnight.txt",
@@ -125,6 +145,11 @@
     "artist": "Composed by Nacio Herb Brown; lyrics by Arthur Freed (1929)"
   },
   {
+    "file": "Stand By Me.txt",
+    "title": "Stand By Me",
+    "artist": "Ben E King"
+  },
+  {
     "file": "Summertime.txt",
     "title": "Summertime",
     "artist": "George Gershwin"
@@ -135,6 +160,11 @@
     "artist": "Amos Lee"
   },
   {
+    "file": "Take Five with Lyrics.txt",
+    "title": "Take Five with lyrics",
+    "artist": "Paul Desmond"
+  },
+  {
     "file": "Take Five.txt",
     "title": "Take Five",
     "artist": "Paul Desmond"
@@ -143,5 +173,10 @@
     "file": "The Way You Look Tonight.txt",
     "title": "The Way You Look Tonight",
     "artist": "Jerome Kern"
+  },
+  {
+    "file": "You Are My Sunshine.txt",
+    "title": "You Are My Sunshine",
+    "artist": "Traditional"
   }
 ]

@@ -1,0 +1,33 @@
+{title: Love Is A Rose}
+{artist: Neil Young}
+{time: 4/4}
+
+{Intro}
+[C:4][F:2][C:6][G:2][C:6][F:2][C:6][G:2][C:2]
+{Chorus}
+[C:4]Love is a rose but you [F:2]better not [C:6]pick it; it only grows when it's [G:2]on the [C:6]vine. 
+Handful of thorns and you'll [F:2]know you [C:6]missed it; lose your love when you [G:2]say the word [C:2]"mine". 
+{Verse}
+[F:4]I wanna see what's [C:4]never been seen, [G:4]I wanna live that [C:4]age old dream. 
+[F:4]Come on, boy, we can [C:4]go together;  let's [G:4]take the best right [C:4]now,
+
+[NC:16]Take the best right now!
+
+{Chorus}
+[C:4]Love is a rose but you [F:2]better not [C:6]pick it; it only grows when it's [G:2]on the [C:6]vine. 
+Handful of thorns and you'll [F:2]know you [C:6]missed it; lose your love when you [G:2]say the word [C:2]"mine". 
+
+{Instrumental - Verse banjo/dulcimer}
+[F:4] [C:4] [G:4] [C:4] [F:4] [C:4] [G:4] [C:4] 
+[NC:16](pentatonic blues scale walks down) 
+{Chorus}
+[C:4]I wanna go to an [F:2]old hoe [C:6]down long ago in a [G:2]western [C:2]town. 
+[C:4]Pick me up cause my [F:2]feet are [C:6]draggin'; give me a lift and I'll [G:2]hay your [C:2]wagon. 
+{Chorus}
+[C:4]Love is a rose but you [F:2]better not [C:6]pick it; it only grows when it's [G:2]on the [C:6]vine. 
+Handful of thorns and you'll [F:2]know you [C:6]missed it; lose your love when you [G:2]say the word [C:2]"mine".
+{Chorus}
+[C:4]Love is a rose but you [F:2]better not [C:6]pick it; it only grows when it's [G:2]on the [C:6]vine. 
+Handful of thorns and you'll [F:2]know you [C:6]missed it; lose your love when you [G:2]say the word [C:2]"mine".  
+{Outro}
+[C:4]Love is a rose, [F:2][C:2] [C:4]love is a rose.[G:2][C:2] [C:4]Love is a rose, [F:2][C:2] [C:4]love is a rose.[G:2][C:2]
