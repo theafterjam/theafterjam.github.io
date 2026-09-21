@@ -4044,7 +4044,7 @@ function startRiffForChord(riffName, chordBeats) {
   activeRiffFlat = riffFlattenTokens(riff);
   activeRiffData = riff;
   activeRiffBeatInRiff = 0;
-  activeRiffJustStarted = true;
+  activeRiffJustStarted = false;
   triggerRiffBuffer();
   const showRiffs = localStorage.getItem('uke-show-riffs') !== 'false';
   if (showRiffs) {
@@ -4118,6 +4118,7 @@ let playbackBeatsPerMeasure = 4;
 let playbackBeatInMeasure = 0;
 let playbackBeatInChord = 0;
 let playbackInCountOff = false;
+let insideBeatTick = false;
 
 function getAudioCtx() {
   if (!audioCtx) {
@@ -4317,6 +4318,7 @@ function highlightCurrentChord() {
   const riffName = current.element.dataset.riffName;
   if (!playbackInCountOff && riffName && riffPreRenderedBuffers[riffName]) {
     startRiffForChord(riffName, current.beats);
+    if (insideBeatTick) activeRiffJustStarted = true;
   } else if (!playbackInCountOff) {
     stopActiveRiff();
   }
@@ -4356,6 +4358,7 @@ function updateBeatDisplay() {
 function scheduleBeatTick() {
   const ms = (1 / playbackBPM) * 60000;
   playbackTimeout = setTimeout(() => {
+    insideBeatTick = true;
     playbackBeatInChord++;
     playbackBeatInMeasure = (playbackBeatInMeasure + 1) % playbackBeatsPerMeasure;
 
@@ -4373,6 +4376,7 @@ function scheduleBeatTick() {
     playDrumBeat();
     tickActiveRiff();
     updateBeatDisplay();
+    insideBeatTick = false;
     scheduleBeatTick();
   }, ms);
 }
