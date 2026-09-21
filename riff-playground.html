@@ -855,24 +855,22 @@ function updateBeatDisplay(currentBeat, totalBeats) {
 
 let audioCtx = null;
 let activeOscillators = [];
-let compressor = null;
+let masterGain = null;
 
 function getAudioCtx() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   if (audioCtx.state === 'suspended') audioCtx.resume();
-  if (!compressor) {
-    compressor = audioCtx.createDynamicsCompressor();
-    compressor.threshold.value = -12;
-    compressor.knee.value = 6;
-    compressor.ratio.value = 8;
-    compressor.connect(audioCtx.destination);
+  if (!masterGain) {
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = 0.7;
+    masterGain.connect(audioCtx.destination);
   }
   return audioCtx;
 }
 
 function getAudioDest() {
   getAudioCtx();
-  return compressor;
+  return masterGain;
 }
 
 function pruneOscillators() {
@@ -885,17 +883,24 @@ function pruneOscillators() {
 
 function playUkeNote(ctx, dest, time, freq, duration) {
   const safeEnd = time + Math.max(duration, 0.05);
+  const endTime = safeEnd + 0.02;
+
+  // Route all oscillators through a per-note gain for clean cutoff
+  const noteGain = ctx.createGain();
+  noteGain.gain.setValueAtTime(1, time);
+  noteGain.gain.setValueAtTime(1, safeEnd - 0.01);
+  noteGain.gain.linearRampToValueAtTime(0, safeEnd);
+  noteGain.connect(dest);
 
   // Fundamental
   const osc1 = ctx.createOscillator();
   const gain1 = ctx.createGain();
   osc1.type = 'sine';
   osc1.frequency.value = freq;
-  gain1.gain.setValueAtTime(0.25, time);
+  gain1.gain.setValueAtTime(0.12, time);
   gain1.gain.exponentialRampToValueAtTime(0.001, safeEnd);
   osc1.connect(gain1);
-  gain1.connect(dest);
-  const endTime = safeEnd + 0.05;
+  gain1.connect(noteGain);
   osc1.start(time);
   osc1.stop(endTime);
   activeOscillators.push({ node: osc1, endTime });
@@ -905,10 +910,10 @@ function playUkeNote(ctx, dest, time, freq, duration) {
   const gain2 = ctx.createGain();
   osc2.type = 'sine';
   osc2.frequency.value = freq * 2;
-  gain2.gain.setValueAtTime(0.15, time);
+  gain2.gain.setValueAtTime(0.07, time);
   gain2.gain.exponentialRampToValueAtTime(0.001, time + Math.max(duration * 0.7, 0.04));
   osc2.connect(gain2);
-  gain2.connect(dest);
+  gain2.connect(noteGain);
   osc2.start(time);
   osc2.stop(endTime);
   activeOscillators.push({ node: osc2, endTime });
@@ -918,10 +923,10 @@ function playUkeNote(ctx, dest, time, freq, duration) {
   const gain3 = ctx.createGain();
   osc3.type = 'sine';
   osc3.frequency.value = freq * 3;
-  gain3.gain.setValueAtTime(0.06, time);
+  gain3.gain.setValueAtTime(0.03, time);
   gain3.gain.exponentialRampToValueAtTime(0.001, time + Math.max(duration * 0.4, 0.03));
   osc3.connect(gain3);
-  gain3.connect(dest);
+  gain3.connect(noteGain);
   osc3.start(time);
   osc3.stop(endTime);
   activeOscillators.push({ node: osc3, endTime });
@@ -938,11 +943,11 @@ function playUkeNote(ctx, dest, time, freq, duration) {
   bp.frequency.value = 3000;
   bp.Q.value = 1.5;
   const noiseGain = ctx.createGain();
-  noiseGain.gain.setValueAtTime(0.08, time);
+  noiseGain.gain.setValueAtTime(0.04, time);
   noiseGain.gain.exponentialRampToValueAtTime(0.001, time + 0.012);
   noise.connect(bp);
   bp.connect(noiseGain);
-  noiseGain.connect(dest);
+  noiseGain.connect(noteGain);
   noise.start(time);
   noise.stop(time + 0.02);
   activeOscillators.push({ node: noise, endTime: time + 0.02 });
