@@ -973,10 +973,10 @@ function playClick(ctx, dest, time, accent) {
 let isPlaying = false;
 let animFrameId = null;
 let playStartTime = 0;
-let loopScheduleTimer = null;
 let playingRiff = null;
 let playingFlat = null;
 let playingSecPerBeat = 0;
+let loopSource = null;
 
 function flattenTokens(riff) {
   const flat = [];
@@ -990,56 +990,29 @@ function flattenTokens(riff) {
   return flat;
 }
 
-let loopGains = [];
-
-function scheduleRiffAudio(ctx, dest, flat, riff, secPerBeat, startTime) {
+function renderRiffToBuffer(ctx, flat, riff, secPerBeat, withMetronome) {
   const riffDuration = riff.beats * secPerBeat;
-  const loopGain = ctx.createGain();
-  loopGain.gain.setValueAtTime(1, startTime);
-  loopGain.gain.setValueAtTime(1, startTime + riffDuration - 0.005);
-  loopGain.gain.linearRampToValueAtTime(0, startTime + riffDuration);
-  loopGain.connect(dest);
-  loopGains.push({ node: loopGain, endTime: startTime + riffDuration + 0.1 });
+  const sampleRate = ctx.sampleRate;
+  const length = Math.ceil(riffDuration * sampleRate);
+  const offline = new OfflineAudioContext(1, length, sampleRate);
 
   for (const token of flat) {
-    const time = startTime + token.actualStart * secPerBeat;
-    const dur = Math.min(token.actualDuration * secPerBeat, riffDuration - token.actualStart * secPerBeat);
+    const time = token.actualStart * secPerBeat;
+    const dur = token.actualDuration * secPerBeat;
     if (token.type === 'note' && token.notes) {
       for (const note of token.notes) {
-        playUkeNote(ctx, loopGain, time, midiToFreq(note.midi), dur);
+        playUkeNote(offline, offline.destination, time, midiToFreq(note.midi), dur);
       }
     }
   }
-  if (document.getElementById('metronomeCheck').checked) {
+
+  if (withMetronome) {
     for (let beat = 0; beat < riff.beats; beat++) {
-      const time = startTime + beat * secPerBeat;
-      playClick(ctx, loopGain, time, beat === 0);
+      playClick(offline, offline.destination, beat * secPerBeat, beat === 0);
     }
   }
-}
 
-function scheduleNextLoop() {
-  if (!isPlaying || !playingRiff) return;
-  pruneOscillators();
-  loopGains = loopGains.filter(g => {
-    if (audioCtx && audioCtx.currentTime > g.endTime) {
-      g.node.disconnect();
-      return false;
-    }
-    return true;
-  });
-  const ctx = getAudioCtx();
-  const dest = getAudioDest();
-  const riffDuration = playingRiff.beats * playingSecPerBeat;
-  const elapsed = ctx.currentTime - playStartTime;
-  const currentLoop = Math.floor(elapsed / riffDuration);
-  const nextLoopTime = playStartTime + (currentLoop + 1) * riffDuration;
-  const timeUntilNext = nextLoopTime - ctx.currentTime;
-
-  scheduleRiffAudio(ctx, dest, playingFlat, playingRiff, playingSecPerBeat, nextLoopTime);
-
-  const scheduleAhead = Math.max(0, (timeUntilNext - 0.3) * 1000);
-  loopScheduleTimer = setTimeout(scheduleNextLoop, scheduleAhead);
+  return offline.startRendering();
 }
 
 function startPlayback() {
@@ -1048,61 +1021,65 @@ function startPlayback() {
   if (!riff || riff.errors.length > 0 || riff.tokens.length === 0) return;
 
   const ctx = getAudioCtx();
-  const dest = getAudioDest();
   const bpm = getBpm();
   const secPerBeat = 60 / bpm;
+  const withMetronome = document.getElementById('metronomeCheck').checked;
 
-  playStartTime = ctx.currentTime + 0.1;
-  activeOscillators = [];
   playingRiff = riff;
   playingFlat = flattenTokens(riff);
   playingSecPerBeat = secPerBeat;
 
-  scheduleRiffAudio(ctx, dest, playingFlat, riff, secPerBeat, playStartTime);
-
-  isPlaying = true;
   document.getElementById('playBtn').disabled = true;
   document.getElementById('stopBtn').disabled = false;
 
-  const riffDuration = riff.beats * secPerBeat;
-  const scheduleAhead = Math.max(0, (riffDuration - 0.3) * 1000);
-  loopScheduleTimer = setTimeout(scheduleNextLoop, scheduleAhead);
+  renderRiffToBuffer(ctx, playingFlat, riff, secPerBeat, withMetronome).then(buffer => {
+    if (!playingRiff) return;
 
-  function animate() {
-    if (!isPlaying) return;
-    const elapsed = ctx.currentTime - playStartTime;
-    const riffDur = riff.beats * secPerBeat;
-    const posInLoop = ((elapsed % riffDur) + riffDur) % riffDur;
-    const currentBeat = posInLoop / secPerBeat;
+    loopSource = ctx.createBufferSource();
+    loopSource.buffer = buffer;
+    loopSource.loop = true;
+    loopSource.connect(getAudioDest());
 
-    updateBeatDisplay(Math.max(0, currentBeat), riff.beats);
+    playStartTime = ctx.currentTime + 0.05;
+    loopSource.start(playStartTime);
+    isPlaying = true;
 
-    clearFretboardDots();
-    for (const token of playingFlat) {
-      const tStart = token.actualStart;
-      const tEnd = tStart + token.actualDuration;
-      if (currentBeat >= tStart && currentBeat < tEnd && token.type === 'note' && token.notes) {
-        for (const note of token.notes) {
-          activateDot(note.string, note.fret);
+    function animate() {
+      if (!isPlaying) return;
+      const elapsed = ctx.currentTime - playStartTime;
+      const riffDur = riff.beats * secPerBeat;
+      const posInLoop = ((elapsed % riffDur) + riffDur) % riffDur;
+      const currentBeat = posInLoop / secPerBeat;
+
+      updateBeatDisplay(Math.max(0, currentBeat), riff.beats);
+
+      clearFretboardDots();
+      for (const token of playingFlat) {
+        const tStart = token.actualStart;
+        const tEnd = tStart + token.actualDuration;
+        if (currentBeat >= tStart && currentBeat < tEnd && token.type === 'note' && token.notes) {
+          for (const note of token.notes) {
+            activateDot(note.string, note.fret);
+          }
         }
       }
+
+      const rows = document.querySelectorAll('#parseTableBody tr');
+      rows.forEach(row => {
+        const rs = parseFloat(row.dataset.actualStart);
+        const re = parseFloat(row.dataset.actualEnd);
+        if (!isNaN(rs) && currentBeat >= rs && currentBeat < re) {
+          row.classList.add('highlight');
+        } else {
+          row.classList.remove('highlight');
+        }
+      });
+
+      animFrameId = requestAnimationFrame(animate);
     }
 
-    const rows = document.querySelectorAll('#parseTableBody tr');
-    rows.forEach(row => {
-      const rs = parseFloat(row.dataset.actualStart);
-      const re = parseFloat(row.dataset.actualEnd);
-      if (!isNaN(rs) && currentBeat >= rs && currentBeat < re) {
-        row.classList.add('highlight');
-      } else {
-        row.classList.remove('highlight');
-      }
-    });
-
     animFrameId = requestAnimationFrame(animate);
-  }
-
-  animFrameId = requestAnimationFrame(animate);
+  });
 }
 
 function stopPlayback() {
@@ -1111,21 +1088,12 @@ function stopPlayback() {
     cancelAnimationFrame(animFrameId);
     animFrameId = null;
   }
-  if (loopScheduleTimer) {
-    clearTimeout(loopScheduleTimer);
-    loopScheduleTimer = null;
+  if (loopSource) {
+    try { loopSource.stop(); } catch (e) {}
+    loopSource = null;
   }
   playingRiff = null;
   playingFlat = null;
-
-  for (const entry of activeOscillators) {
-    try { entry.node.stop(); } catch (e) {}
-  }
-  activeOscillators = [];
-  for (const g of loopGains) {
-    try { g.node.disconnect(); } catch (e) {}
-  }
-  loopGains = [];
 
   clearFretboardDots();
   document.querySelectorAll('#parseTableBody tr').forEach(r => r.classList.remove('highlight'));
@@ -1147,7 +1115,7 @@ function onTuningChange() {
 
 // === Init ===
 
-const BUILD_VERSION = 'v5';
+const BUILD_VERSION = 'v6';
 document.getElementById('versionLabel').textContent = BUILD_VERSION;
 
 initExamples();
