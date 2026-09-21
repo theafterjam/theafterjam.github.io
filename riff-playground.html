@@ -855,11 +855,32 @@ function updateBeatDisplay(currentBeat, totalBeats) {
 
 let audioCtx = null;
 let activeOscillators = [];
+let compressor = null;
 
 function getAudioCtx() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   if (audioCtx.state === 'suspended') audioCtx.resume();
+  if (!compressor) {
+    compressor = audioCtx.createDynamicsCompressor();
+    compressor.threshold.value = -12;
+    compressor.knee.value = 6;
+    compressor.ratio.value = 8;
+    compressor.connect(audioCtx.destination);
+  }
   return audioCtx;
+}
+
+function getAudioDest() {
+  getAudioCtx();
+  return compressor;
+}
+
+function pruneOscillators() {
+  const now = audioCtx ? audioCtx.currentTime : 0;
+  activeOscillators = activeOscillators.filter(entry => {
+    if (entry.endTime && now > entry.endTime) return false;
+    return true;
+  });
 }
 
 function playUkeNote(ctx, dest, time, freq, duration) {
@@ -874,9 +895,10 @@ function playUkeNote(ctx, dest, time, freq, duration) {
   gain1.gain.exponentialRampToValueAtTime(0.001, safeEnd);
   osc1.connect(gain1);
   gain1.connect(dest);
+  const endTime = safeEnd + 0.05;
   osc1.start(time);
-  osc1.stop(safeEnd + 0.05);
-  activeOscillators.push(osc1);
+  osc1.stop(endTime);
+  activeOscillators.push({ node: osc1, endTime });
 
   // 2nd harmonic
   const osc2 = ctx.createOscillator();
@@ -888,8 +910,8 @@ function playUkeNote(ctx, dest, time, freq, duration) {
   osc2.connect(gain2);
   gain2.connect(dest);
   osc2.start(time);
-  osc2.stop(safeEnd + 0.05);
-  activeOscillators.push(osc2);
+  osc2.stop(endTime);
+  activeOscillators.push({ node: osc2, endTime });
 
   // 3rd harmonic
   const osc3 = ctx.createOscillator();
@@ -901,8 +923,8 @@ function playUkeNote(ctx, dest, time, freq, duration) {
   osc3.connect(gain3);
   gain3.connect(dest);
   osc3.start(time);
-  osc3.stop(safeEnd + 0.05);
-  activeOscillators.push(osc3);
+  osc3.stop(endTime);
+  activeOscillators.push({ node: osc3, endTime });
 
   // Pluck transient
   const bufferSize = ctx.sampleRate * 0.012;
@@ -923,7 +945,7 @@ function playUkeNote(ctx, dest, time, freq, duration) {
   noiseGain.connect(dest);
   noise.start(time);
   noise.stop(time + 0.02);
-  activeOscillators.push(noise);
+  activeOscillators.push({ node: noise, endTime: time + 0.02 });
 }
 
 function playClick(ctx, dest, time, accent) {
@@ -937,7 +959,7 @@ function playClick(ctx, dest, time, accent) {
   gain.connect(dest);
   osc.start(time);
   osc.stop(time + 0.1);
-  activeOscillators.push(osc);
+  activeOscillators.push({ node: osc, endTime: time + 0.1 });
 }
 
 // === Playback Controller ===
@@ -982,8 +1004,9 @@ function scheduleRiffAudio(ctx, dest, flat, riff, secPerBeat, startTime) {
 
 function scheduleNextLoop() {
   if (!isPlaying || !playingRiff) return;
+  pruneOscillators();
   const ctx = getAudioCtx();
-  const dest = ctx.destination;
+  const dest = getAudioDest();
   const riffDuration = playingRiff.beats * playingSecPerBeat;
   const elapsed = ctx.currentTime - playStartTime;
   const currentLoop = Math.floor(elapsed / riffDuration);
@@ -1002,7 +1025,7 @@ function startPlayback() {
   if (!riff || riff.errors.length > 0 || riff.tokens.length === 0) return;
 
   const ctx = getAudioCtx();
-  const dest = ctx.destination;
+  const dest = getAudioDest();
   const bpm = getBpm();
   const secPerBeat = 60 / bpm;
 
@@ -1072,8 +1095,8 @@ function stopPlayback() {
   playingRiff = null;
   playingFlat = null;
 
-  for (const osc of activeOscillators) {
-    try { osc.stop(); } catch (e) {}
+  for (const entry of activeOscillators) {
+    try { entry.node.stop(); } catch (e) {}
   }
   activeOscillators = [];
 
