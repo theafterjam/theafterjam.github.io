@@ -984,20 +984,30 @@ function flattenTokens(riff) {
   return flat;
 }
 
+let loopGains = [];
+
 function scheduleRiffAudio(ctx, dest, flat, riff, secPerBeat, startTime) {
+  const riffDuration = riff.beats * secPerBeat;
+  const loopGain = ctx.createGain();
+  loopGain.gain.setValueAtTime(1, startTime);
+  loopGain.gain.setValueAtTime(1, startTime + riffDuration - 0.005);
+  loopGain.gain.linearRampToValueAtTime(0, startTime + riffDuration);
+  loopGain.connect(dest);
+  loopGains.push({ node: loopGain, endTime: startTime + riffDuration + 0.1 });
+
   for (const token of flat) {
     const time = startTime + token.actualStart * secPerBeat;
-    const dur = token.actualDuration * secPerBeat;
+    const dur = Math.min(token.actualDuration * secPerBeat, riffDuration - token.actualStart * secPerBeat);
     if (token.type === 'note' && token.notes) {
       for (const note of token.notes) {
-        playUkeNote(ctx, dest, time, midiToFreq(note.midi), dur);
+        playUkeNote(ctx, loopGain, time, midiToFreq(note.midi), dur);
       }
     }
   }
   if (document.getElementById('metronomeCheck').checked) {
     for (let beat = 0; beat < riff.beats; beat++) {
       const time = startTime + beat * secPerBeat;
-      playClick(ctx, dest, time, beat === 0);
+      playClick(ctx, loopGain, time, beat === 0);
     }
   }
 }
@@ -1005,6 +1015,13 @@ function scheduleRiffAudio(ctx, dest, flat, riff, secPerBeat, startTime) {
 function scheduleNextLoop() {
   if (!isPlaying || !playingRiff) return;
   pruneOscillators();
+  loopGains = loopGains.filter(g => {
+    if (audioCtx && audioCtx.currentTime > g.endTime) {
+      g.node.disconnect();
+      return false;
+    }
+    return true;
+  });
   const ctx = getAudioCtx();
   const dest = getAudioDest();
   const riffDuration = playingRiff.beats * playingSecPerBeat;
@@ -1099,6 +1116,10 @@ function stopPlayback() {
     try { entry.node.stop(); } catch (e) {}
   }
   activeOscillators = [];
+  for (const g of loopGains) {
+    try { g.node.disconnect(); } catch (e) {}
+  }
+  loopGains = [];
 
   clearFretboardDots();
   document.querySelectorAll('#parseTableBody tr').forEach(r => r.classList.remove('highlight'));
