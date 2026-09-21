@@ -99,6 +99,28 @@
   .add-setlist-dropdown li:last-child { border-bottom: none; }
   .add-setlist-dropdown .new-setlist-item { color: #27ae60; font-weight: 600; }
 
+  /* === Toast === */
+  .sidebar-toast { position: absolute; bottom: 12px; left: 12px; right: 12px; background: #27ae60; color: #fff; padding: 8px 12px; border-radius: 6px; font-size: 0.82em; font-weight: 600; text-align: center; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 300; }
+  .sidebar-toast.visible { opacity: 1; }
+
+  /* === Set List Notes === */
+  .setlist-notes-preview { font-size: 0.7em; color: #95a5a6; font-style: italic; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .setlist-song-edit-notes { background: none; border: none; color: #7f8c8d; cursor: pointer; font-size: 0.9em; padding: 2px 4px; border-radius: 3px; flex-shrink: 0; }
+  .setlist-song-edit-notes:hover { color: #3498db; background: rgba(52,152,219,0.1); }
+
+  /* === Notes Modal === */
+  .notes-modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); z-index: 500; display: flex; align-items: center; justify-content: center; }
+  .notes-modal { background: #fff; border-radius: 8px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); width: 400px; max-width: 90vw; max-height: 80vh; display: flex; flex-direction: column; }
+  .notes-modal-header { padding: 14px 16px; border-bottom: 1px solid #e0e0e0; font-weight: 700; font-size: 0.95em; color: #333; display: flex; align-items: center; justify-content: space-between; }
+  .notes-modal-close { background: none; border: none; font-size: 1.3em; cursor: pointer; color: #999; padding: 0 4px; }
+  .notes-modal-close:hover { color: #333; }
+  .notes-modal textarea { flex: 1; margin: 12px 16px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-family: 'Segoe UI', system-ui, sans-serif; font-size: 0.9em; resize: vertical; min-height: 120px; outline: none; }
+  .notes-modal textarea:focus { border-color: #3498db; }
+  .notes-modal-footer { padding: 10px 16px; border-top: 1px solid #e0e0e0; display: flex; justify-content: flex-end; gap: 8px; }
+  .notes-modal-footer button { padding: 6px 16px; border-radius: 4px; border: 1px solid #ddd; cursor: pointer; font-size: 0.85em; font-weight: 600; }
+  .notes-modal-footer .btn-save { background: #3498db; color: #fff; border-color: #3498db; }
+  .notes-modal-footer .btn-save:hover { background: #2980b9; }
+
   /* === Main content === */
   .main-content { flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; position: relative; }
 
@@ -367,6 +389,8 @@
       <div id="setlistOverview">
         <div class="sidebar-actions">
           <button class="btn-new" onclick="createSetList()" style="flex:1">+ New Set List</button>
+          <button class="btn-import" onclick="document.getElementById('setlistFilePicker').click()">Import</button>
+          <input type="file" id="setlistFilePicker" accept=".txt" style="display:none" onchange="importSetList(this)">
         </div>
         <ul id="setlistList">
           <li class="sidebar-empty">No set lists yet.</li>
@@ -376,7 +400,8 @@
         <div class="setlist-detail-header">
           <button class="setlist-back" onclick="showSetlistOverview()">&larr;</button>
           <span class="setlist-detail-name" id="setlistDetailName" onclick="renameCurrentSetList()"></span>
-          <button class="setlist-export" onclick="exportSetListToClipboard()" title="Copy as table">&#128203;</button>
+          <button class="setlist-export" onclick="exportSetListToFile()" title="Download as file">&#128190;</button>
+          <button class="setlist-export setlist-copy-btn" onclick="exportSetListToClipboard()" title="Copy as table">&#128203;</button>
         </div>
         <ul id="setlistSongs"></ul>
         <div class="setlist-add-song">
@@ -385,6 +410,7 @@
         </div>
       </div>
     </div>
+    <div class="sidebar-toast" id="sidebarToast"></div>
   </aside>
 
   <div class="main-content">
@@ -3924,7 +3950,7 @@ function extractArtist(text) {
 function deleteSong(id) {
   library = library.filter(s => s.id !== id);
   if (activeSongId === id) activeSongId = null;
-  setLists.forEach(sl => { sl.songIds = sl.songIds.filter(sid => sid !== id); });
+  setLists.forEach(sl => { sl.songs = sl.songs.filter(entry => entry.songId !== id); });
   saveLibrary();
   saveSetLists();
   updateSidebar();
@@ -4111,8 +4137,19 @@ function loadSetLists() {
   try {
     const data = localStorage.getItem(SETLIST_STORAGE_KEY);
     if (data) setLists = JSON.parse(data);
+    let migrated = false;
+    setLists.forEach(sl => {
+      if (sl.songIds && !sl.songs) {
+        sl.songs = sl.songIds.map(id => ({ songId: id, notes: '' }));
+        delete sl.songIds;
+        migrated = true;
+      }
+    });
+    if (migrated) saveSetLists();
   } catch(e) {}
 }
+
+const DEFAULT_NOTES_TEMPLATE = 'Intro: \nRepeat: 2x\nOutro: ';
 
 function escapeHtml(str) {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -4130,7 +4167,7 @@ function switchSidebarTab(tabName) {
 function createSetList() {
   const name = prompt('Set list name:');
   if (!name || !name.trim()) return;
-  const sl = { id: Date.now() + Math.random(), name: name.trim(), songIds: [] };
+  const sl = { id: Date.now() + Math.random(), name: name.trim(), songs: [] };
   setLists.push(sl);
   saveSetLists();
   updateSetlistOverview();
@@ -4177,7 +4214,7 @@ function updateSetlistOverview() {
     nameSpan.addEventListener('click', () => openSetList(sl.id));
     const count = document.createElement('span');
     count.className = 'setlist-count';
-    count.textContent = sl.songIds.length + (sl.songIds.length === 1 ? ' song' : ' songs');
+    count.textContent = sl.songs.length + (sl.songs.length === 1 ? ' song' : ' songs');
     const del = document.createElement('button');
     del.className = 'setlist-delete';
     del.innerHTML = '&times;';
@@ -4215,15 +4252,15 @@ function updateSetlistDetail() {
   document.getElementById('setlistDetailName').textContent = sl.name;
   const list = document.getElementById('setlistSongs');
   list.innerHTML = '';
-  if (sl.songIds.length === 0) {
+  if (sl.songs.length === 0) {
     const li = document.createElement('li');
     li.className = 'sidebar-empty';
     li.textContent = 'No songs yet. Use search below to add.';
     list.appendChild(li);
     return;
   }
-  sl.songIds.forEach((songId, idx) => {
-    const song = library.find(s => s.id === songId);
+  sl.songs.forEach((entry, idx) => {
+    const song = library.find(s => s.id === entry.songId);
     if (!song) return;
     const li = document.createElement('li');
     if (song.id === activeSongId) li.classList.add('active');
@@ -4236,7 +4273,7 @@ function updateSetlistDetail() {
     upBtn.addEventListener('click', (e) => { e.stopPropagation(); moveSetlistSong(idx, -1); });
     const downBtn = document.createElement('button');
     downBtn.textContent = '▼';
-    if (idx === sl.songIds.length - 1) downBtn.className = 'hidden';
+    if (idx === sl.songs.length - 1) downBtn.className = 'hidden';
     downBtn.addEventListener('click', (e) => { e.stopPropagation(); moveSetlistSong(idx, 1); });
     reorder.appendChild(upBtn);
     reorder.appendChild(downBtn);
@@ -4253,14 +4290,29 @@ function updateSetlistDetail() {
     const artistDiv = document.createElement('div');
     artistDiv.className = 'song-artist';
     artistDiv.textContent = song.artist;
-    info.appendChild(titleDiv);
-    info.appendChild(artistDiv);
+    if (entry.notes && entry.notes.trim()) {
+      const notesPreview = document.createElement('div');
+      notesPreview.className = 'setlist-notes-preview';
+      notesPreview.textContent = entry.notes.trim().substring(0, 40) + (entry.notes.trim().length > 40 ? '…' : '');
+      info.appendChild(titleDiv);
+      info.appendChild(artistDiv);
+      info.appendChild(notesPreview);
+    } else {
+      info.appendChild(titleDiv);
+      info.appendChild(artistDiv);
+    }
     info.addEventListener('click', () => {
       loadSongFromLibrary(song);
       updateSetlistDetail();
       updateSidebar();
       if (window.innerWidth <= 768) toggleMobileSidebar();
     });
+
+    const editNotes = document.createElement('button');
+    editNotes.className = 'setlist-song-edit-notes';
+    editNotes.textContent = '✎';
+    editNotes.title = 'Edit arrangement notes';
+    editNotes.addEventListener('click', (e) => { e.stopPropagation(); openNotesModal(idx); });
 
     const remove = document.createElement('button');
     remove.className = 'setlist-song-remove';
@@ -4271,6 +4323,7 @@ function updateSetlistDetail() {
     li.appendChild(reorder);
     li.appendChild(num);
     li.appendChild(info);
+    li.appendChild(editNotes);
     li.appendChild(remove);
     list.appendChild(li);
   });
@@ -4280,8 +4333,8 @@ function moveSetlistSong(fromIndex, direction) {
   const sl = setLists.find(s => s.id === activeSetListId);
   if (!sl) return;
   const toIndex = fromIndex + direction;
-  if (toIndex < 0 || toIndex >= sl.songIds.length) return;
-  [sl.songIds[fromIndex], sl.songIds[toIndex]] = [sl.songIds[toIndex], sl.songIds[fromIndex]];
+  if (toIndex < 0 || toIndex >= sl.songs.length) return;
+  [sl.songs[fromIndex], sl.songs[toIndex]] = [sl.songs[toIndex], sl.songs[fromIndex]];
   saveSetLists();
   updateSetlistDetail();
 }
@@ -4289,7 +4342,7 @@ function moveSetlistSong(fromIndex, direction) {
 function removeFromSetList(index) {
   const sl = setLists.find(s => s.id === activeSetListId);
   if (!sl) return;
-  sl.songIds.splice(index, 1);
+  sl.songs.splice(index, 1);
   saveSetLists();
   updateSetlistDetail();
 }
@@ -4297,7 +4350,7 @@ function removeFromSetList(index) {
 function addSongToSetList(setListId, songId) {
   const sl = setLists.find(s => s.id === setListId);
   if (!sl) return;
-  sl.songIds.push(songId);
+  sl.songs.push({ songId, notes: '' });
   saveSetLists();
   if (activeSetListId === setListId) updateSetlistDetail();
 }
@@ -4326,6 +4379,8 @@ function updateSetlistSongSearch() {
     li.appendChild(artist);
     li.addEventListener('click', () => {
       addSongToSetList(activeSetListId, song.id);
+      const sl = setLists.find(s => s.id === activeSetListId);
+      showToast(song.title + ' added to ' + (sl ? sl.name : 'set list'));
       input.value = '';
       results.innerHTML = '';
     });
@@ -4339,6 +4394,7 @@ function showAddToSetListDropdown(event, songId) {
   const btn = event.currentTarget;
   const li = btn.closest('li');
   li.style.position = 'relative';
+  const songName = (library.find(s => s.id === songId) || {}).title || 'Song';
   const dropdown = document.createElement('ul');
   dropdown.className = 'add-setlist-dropdown';
   setLists.forEach(sl => {
@@ -4348,6 +4404,7 @@ function showAddToSetListDropdown(event, songId) {
       e.stopPropagation();
       addSongToSetList(sl.id, songId);
       closeAddToSetListDropdown();
+      showToast(songName + ' added to ' + sl.name);
     });
     dropdown.appendChild(item);
   });
@@ -4357,7 +4414,10 @@ function showAddToSetListDropdown(event, songId) {
   newItem.addEventListener('click', (e) => {
     e.stopPropagation();
     const sl = createSetList();
-    if (sl) addSongToSetList(sl.id, songId);
+    if (sl) {
+      addSongToSetList(sl.id, songId);
+      showToast(songName + ' added to ' + sl.name);
+    }
     closeAddToSetListDropdown();
   });
   dropdown.appendChild(newItem);
@@ -4375,30 +4435,175 @@ function closeAddToSetListDropdown() {
   }
 }
 
+let toastTimeout = null;
+function showToast(message) {
+  const toast = document.getElementById('sidebarToast');
+  toast.textContent = message;
+  toast.classList.add('visible');
+  clearTimeout(toastTimeout);
+  toastTimeout = setTimeout(() => toast.classList.remove('visible'), 2000);
+}
+
+let notesModalOverlay = null;
+function openNotesModal(songIndex) {
+  const sl = setLists.find(s => s.id === activeSetListId);
+  if (!sl || !sl.songs[songIndex]) return;
+  const entry = sl.songs[songIndex];
+  const song = library.find(s => s.id === entry.songId);
+  if (!song) return;
+  closeNotesModal();
+  notesModalOverlay = document.createElement('div');
+  notesModalOverlay.className = 'notes-modal-overlay';
+  notesModalOverlay.addEventListener('click', (e) => { if (e.target === notesModalOverlay) closeNotesModal(); });
+  const modal = document.createElement('div');
+  modal.className = 'notes-modal';
+  const header = document.createElement('div');
+  header.className = 'notes-modal-header';
+  const titleSpan = document.createElement('span');
+  titleSpan.textContent = song.title;
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'notes-modal-close';
+  closeBtn.innerHTML = '&times;';
+  closeBtn.addEventListener('click', () => closeNotesModal());
+  header.appendChild(titleSpan);
+  header.appendChild(closeBtn);
+  const textarea = document.createElement('textarea');
+  textarea.id = 'notesModalTextarea';
+  textarea.value = entry.notes || DEFAULT_NOTES_TEMPLATE;
+  textarea.dataset.setlistId = activeSetListId;
+  textarea.dataset.songIndex = songIndex;
+  const footer = document.createElement('div');
+  footer.className = 'notes-modal-footer';
+  const saveBtn = document.createElement('button');
+  saveBtn.className = 'btn-save';
+  saveBtn.textContent = 'Done';
+  saveBtn.addEventListener('click', () => closeNotesModal());
+  footer.appendChild(saveBtn);
+  modal.appendChild(header);
+  modal.appendChild(textarea);
+  modal.appendChild(footer);
+  notesModalOverlay.appendChild(modal);
+  document.body.appendChild(notesModalOverlay);
+  textarea.focus();
+  const escHandler = (e) => {
+    if (e.key === 'Escape' && notesModalOverlay) { e.preventDefault(); e.stopPropagation(); closeNotesModal(); }
+  };
+  document.addEventListener('keydown', escHandler, true);
+  notesModalOverlay._escHandler = escHandler;
+}
+
+function closeNotesModal() {
+  if (!notesModalOverlay) return;
+  const textarea = document.getElementById('notesModalTextarea');
+  if (textarea) {
+    const slId = parseFloat(textarea.dataset.setlistId);
+    const idx = parseInt(textarea.dataset.songIndex);
+    const sl = setLists.find(s => s.id === slId);
+    if (sl && sl.songs[idx]) {
+      sl.songs[idx].notes = textarea.value;
+      saveSetLists();
+      if (activeSetListId === slId) updateSetlistDetail();
+    }
+  }
+  if (notesModalOverlay._escHandler) {
+    document.removeEventListener('keydown', notesModalOverlay._escHandler, true);
+  }
+  notesModalOverlay.remove();
+  notesModalOverlay = null;
+}
+
+function exportSetListToFile() {
+  const sl = setLists.find(s => s.id === activeSetListId);
+  if (!sl) return;
+  let text = 'Setlist: ' + sl.name + '\n---\n';
+  sl.songs.forEach(entry => {
+    const song = library.find(s => s.id === entry.songId);
+    if (!song) return;
+    const notesStr = entry.notes ? entry.notes.replace(/\n/g, ' // ') : '';
+    text += song.title + (notesStr ? ' | ' + notesStr : '') + '\n';
+  });
+  const blob = new Blob([text], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = sl.name + '.txt';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+function importSetList(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const lines = e.target.result.split('\n').map(l => l.trimEnd());
+    if (!lines[0] || !lines[0].toLowerCase().startsWith('setlist:')) {
+      alert('This file is not a set list. Expected format:\n\nSetlist: Name\n---\nSong Title 1\nSong Title 2');
+      input.value = '';
+      return;
+    }
+    const name = lines[0].split(':').slice(1).join(':').trim();
+    const sepIdx = lines.indexOf('---');
+    const songLines = sepIdx >= 0 ? lines.slice(sepIdx + 1) : lines.slice(1);
+    const songs = [];
+    const notFound = [];
+    for (const line of songLines) {
+      if (!line.trim()) continue;
+      const parts = line.split('|');
+      const title = parts[0].trim();
+      const notes = parts.length > 1 ? parts.slice(1).join('|').trim().replace(/ \/\/ /g, '\n') : '';
+      const match = library.find(s => s.title.toLowerCase() === title.toLowerCase());
+      if (match) {
+        songs.push({ songId: match.id, notes });
+      } else {
+        notFound.push(title);
+      }
+    }
+    let finalName = name;
+    if (setLists.some(s => s.name === finalName)) {
+      let i = 2;
+      while (setLists.some(s => s.name === finalName + ' (' + i + ')')) i++;
+      finalName = finalName + ' (' + i + ')';
+    }
+    const sl = { id: Date.now() + Math.random(), name: finalName, songs };
+    setLists.push(sl);
+    saveSetLists();
+    updateSetlistOverview();
+    const total = songs.length + notFound.length;
+    if (notFound.length === 0) {
+      showToast('Imported ' + songs.length + ' songs');
+    } else {
+      alert('Imported ' + songs.length + ' of ' + total + ' songs.\n\nNot found:\n' + notFound.join('\n'));
+    }
+    input.value = '';
+  };
+  reader.readAsText(file);
+}
+
 function exportSetListToClipboard() {
   const sl = setLists.find(s => s.id === activeSetListId);
   if (!sl) return;
   let html = '<h2>' + escapeHtml(sl.name) + '</h2>';
   html += '<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;">';
-  html += '<tr><th>#</th><th>Title</th><th>Artist</th></tr>';
+  html += '<tr><th>#</th><th>Title</th><th>Arrangement</th></tr>';
   let plain = sl.name + '\n\n';
-  sl.songIds.forEach((songId, i) => {
-    const song = library.find(s => s.id === songId);
+  sl.songs.forEach((entry, i) => {
+    const song = library.find(s => s.id === entry.songId);
     if (!song) return;
-    html += '<tr><td>' + (i + 1) + '</td><td>' + escapeHtml(song.title) + '</td><td>' + escapeHtml(song.artist) + '</td></tr>';
-    plain += (i + 1) + '. ' + song.title + (song.artist ? ' — ' + song.artist : '') + '\n';
+    const notesHtml = entry.notes ? escapeHtml(entry.notes).replace(/\n/g, '<br>') : '';
+    html += '<tr><td>' + (i + 1) + '</td><td>' + escapeHtml(song.title) + '</td><td>' + notesHtml + '</td></tr>';
+    plain += (i + 1) + '. ' + song.title + (entry.notes ? ' | ' + entry.notes.replace(/\n/g, '; ') : '') + '\n';
   });
   html += '</table>';
-  const exportBtn = document.querySelector('.setlist-export');
+  const copyBtn = document.querySelector('.setlist-copy-btn');
   try {
     const htmlBlob = new Blob([html], { type: 'text/html' });
     const textBlob = new Blob([plain], { type: 'text/plain' });
     navigator.clipboard.write([new ClipboardItem({ 'text/html': htmlBlob, 'text/plain': textBlob })]).then(() => {
-      if (exportBtn) { exportBtn.textContent = '✓'; setTimeout(() => { exportBtn.textContent = '📋'; }, 1500); }
+      if (copyBtn) { copyBtn.textContent = '✓'; setTimeout(() => { copyBtn.textContent = '📋'; }, 1500); }
     });
   } catch(e) {
     navigator.clipboard.writeText(plain).then(() => {
-      if (exportBtn) { exportBtn.textContent = '✓'; setTimeout(() => { exportBtn.textContent = '📋'; }, 1500); }
+      if (copyBtn) { copyBtn.textContent = '✓'; setTimeout(() => { copyBtn.textContent = '📋'; }, 1500); }
     });
   }
 }
@@ -4447,8 +4652,8 @@ function reorderActiveInSetList(dir) {
   const currentIdx = items.findIndex(li => li.classList.contains('highlighted'));
   if (currentIdx < 0) return;
   const toIdx = currentIdx + dir;
-  if (toIdx < 0 || toIdx >= sl.songIds.length) return;
-  [sl.songIds[currentIdx], sl.songIds[toIdx]] = [sl.songIds[toIdx], sl.songIds[currentIdx]];
+  if (toIdx < 0 || toIdx >= sl.songs.length) return;
+  [sl.songs[currentIdx], sl.songs[toIdx]] = [sl.songs[toIdx], sl.songs[currentIdx]];
   saveSetLists();
   updateSetlistDetail();
   const newItems = Array.from(document.getElementById('setlistSongs').querySelectorAll('li:not(.sidebar-empty)'));
