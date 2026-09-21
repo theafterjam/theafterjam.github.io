@@ -238,6 +238,7 @@
       <option value="DGBE">Baritone (DGBE)</option>
     </select>
   </div>
+  <span style="margin-left:auto;font-size:0.7em;opacity:0.5" id="versionLabel"></span>
 </header>
 
 <div class="main">
@@ -1145,6 +1146,9 @@ function onTuningChange() {
 }
 
 // === Init ===
+
+const BUILD_VERSION = 'v5';
+document.getElementById('versionLabel').textContent = BUILD_VERSION;
 
 initExamples();
 renderFretboard();
