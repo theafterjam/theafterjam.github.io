@@ -1,0 +1,19 @@
+Title: All Blues
+Artist: Miles Davis
+
+{time: 3/4}
+
+{riff: riff1_1, 6}
+G4+C2:2 C0+E0:1 C2+E1:2 C0+E0:1
+{end_riff}
+
+{Intro:}
+[G7:24](Bass riff)
+[G7:24](Baritone strum)
+[G7:24:riff1_1](Tenor riff)
+{Verse:}
+[G7:24]
+[C7/G:12]
+[G7:12]
+[D7#9:6][Eb7#9:3][D7#9:3]
+[G7:12]
