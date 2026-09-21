@@ -342,7 +342,7 @@ const EXAMPLES = {
   'Simple Scale': '{riff: c_scale, 4}\nC0:0.5 C2:0.5 E0:0.5 E1:0.5 E3:0.5 A0:0.5 A2:0.5 A3:0.5\n{end_riff}',
   'Jazz Lick (swing)': '{riff: jazz_lick, 4, swing}\nR:1 A3:0.5 E2:0.5 C0:0.5 G2:0.5 E3:1\n{end_riff}',
   'Triplet Pattern': '{riff: triplet_demo, 4}\nA3:1 3(E2 C0 G2):1 A5:1 R:1\n{end_riff}',
-  'Double Stops': '{riff: double_stops, 4}\nE2+A3:1 C0+G2:1 E3+A5:0.5 E2+A3:0.5 C0+G2:1\n{end_riff}',
+  'Double Stops': '{riff: double_stops, 6}\nG4+C2:2 C0+E0:1 C2+E1:2 C0+E0:1\n{end_riff}',
   'Swing with Rests': '{riff: swing_rest, 4, swing}\nA3:0.5 R:0.5 E2:0.5 A0:0.5 C0:1 R:1\n{end_riff}'
 };
 
@@ -945,6 +945,10 @@ function playClick(ctx, dest, time, accent) {
 let isPlaying = false;
 let animFrameId = null;
 let playStartTime = 0;
+let loopScheduleTimer = null;
+let playingRiff = null;
+let playingFlat = null;
+let playingSecPerBeat = 0;
 
 function flattenTokens(riff) {
   const flat = [];
@@ -956,6 +960,40 @@ function flattenTokens(riff) {
     }
   }
   return flat;
+}
+
+function scheduleRiffAudio(ctx, dest, flat, riff, secPerBeat, startTime) {
+  for (const token of flat) {
+    const time = startTime + token.actualStart * secPerBeat;
+    const dur = token.actualDuration * secPerBeat;
+    if (token.type === 'note' && token.notes) {
+      for (const note of token.notes) {
+        playUkeNote(ctx, dest, time, midiToFreq(note.midi), dur);
+      }
+    }
+  }
+  if (document.getElementById('metronomeCheck').checked) {
+    for (let beat = 0; beat < riff.beats; beat++) {
+      const time = startTime + beat * secPerBeat;
+      playClick(ctx, dest, time, beat === 0);
+    }
+  }
+}
+
+function scheduleNextLoop() {
+  if (!isPlaying || !playingRiff) return;
+  const ctx = getAudioCtx();
+  const dest = ctx.destination;
+  const riffDuration = playingRiff.beats * playingSecPerBeat;
+  const elapsed = ctx.currentTime - playStartTime;
+  const currentLoop = Math.floor(elapsed / riffDuration);
+  const nextLoopTime = playStartTime + (currentLoop + 1) * riffDuration;
+  const timeUntilNext = nextLoopTime - ctx.currentTime;
+
+  scheduleRiffAudio(ctx, dest, playingFlat, playingRiff, playingSecPerBeat, nextLoopTime);
+
+  const scheduleAhead = Math.max(0, (timeUntilNext - 0.3) * 1000);
+  loopScheduleTimer = setTimeout(scheduleNextLoop, scheduleAhead);
 }
 
 function startPlayback() {
@@ -970,48 +1008,31 @@ function startPlayback() {
 
   playStartTime = ctx.currentTime + 0.1;
   activeOscillators = [];
+  playingRiff = riff;
+  playingFlat = flattenTokens(riff);
+  playingSecPerBeat = secPerBeat;
 
-  const flat = flattenTokens(riff);
-
-  // Schedule all audio
-  for (const token of flat) {
-    const time = playStartTime + token.actualStart * secPerBeat;
-    const dur = token.actualDuration * secPerBeat;
-    if (token.type === 'note' && token.notes) {
-      for (const note of token.notes) {
-        playUkeNote(ctx, dest, time, midiToFreq(note.midi), dur);
-      }
-    }
-  }
-
-  // Metronome
-  if (document.getElementById('metronomeCheck').checked) {
-    for (let beat = 0; beat < riff.beats; beat++) {
-      const time = playStartTime + beat * secPerBeat;
-      playClick(ctx, dest, time, beat === 0);
-    }
-  }
+  scheduleRiffAudio(ctx, dest, playingFlat, riff, secPerBeat, playStartTime);
 
   isPlaying = true;
   document.getElementById('playBtn').disabled = true;
   document.getElementById('stopBtn').disabled = false;
 
-  // Animation loop
+  const riffDuration = riff.beats * secPerBeat;
+  const scheduleAhead = Math.max(0, (riffDuration - 0.3) * 1000);
+  loopScheduleTimer = setTimeout(scheduleNextLoop, scheduleAhead);
+
   function animate() {
     if (!isPlaying) return;
     const elapsed = ctx.currentTime - playStartTime;
-    const currentBeat = elapsed / secPerBeat;
-
-    if (currentBeat >= riff.beats) {
-      stopPlayback();
-      return;
-    }
+    const riffDur = riff.beats * secPerBeat;
+    const posInLoop = ((elapsed % riffDur) + riffDur) % riffDur;
+    const currentBeat = posInLoop / secPerBeat;
 
     updateBeatDisplay(Math.max(0, currentBeat), riff.beats);
 
-    // Highlight fretboard dots
     clearFretboardDots();
-    for (const token of flat) {
+    for (const token of playingFlat) {
       const tStart = token.actualStart;
       const tEnd = tStart + token.actualDuration;
       if (currentBeat >= tStart && currentBeat < tEnd && token.type === 'note' && token.notes) {
@@ -1021,7 +1042,6 @@ function startPlayback() {
       }
     }
 
-    // Highlight table rows
     const rows = document.querySelectorAll('#parseTableBody tr');
     rows.forEach(row => {
       const rs = parseFloat(row.dataset.actualStart);
@@ -1045,6 +1065,12 @@ function stopPlayback() {
     cancelAnimationFrame(animFrameId);
     animFrameId = null;
   }
+  if (loopScheduleTimer) {
+    clearTimeout(loopScheduleTimer);
+    loopScheduleTimer = null;
+  }
+  playingRiff = null;
+  playingFlat = null;
 
   for (const osc of activeOscillators) {
     try { osc.stop(); } catch (e) {}
