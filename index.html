@@ -4317,8 +4317,9 @@ function highlightCurrentChord() {
 
   const riffName = current.element.dataset.riffName;
   if (!playbackInCountOff && riffName && riffPreRenderedBuffers[riffName]) {
+    const wasActive = activeRiffName;
     startRiffForChord(riffName, current.beats);
-    if (insideBeatTick) activeRiffJustStarted = true;
+    if (insideBeatTick && activeRiffName !== wasActive) activeRiffJustStarted = true;
   } else if (!playbackInCountOff) {
     stopActiveRiff();
   }
