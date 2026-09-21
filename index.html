@@ -3929,6 +3929,7 @@ let riffPreRenderedBuffers = {};
 let activeRiffSource = null;
 let activeRiffName = null;
 let activeRiffBeatInRiff = 0;
+let activeRiffJustStarted = false;
 let activeRiffFlat = null;
 let activeRiffData = null;
 
@@ -4043,6 +4044,7 @@ function startRiffForChord(riffName, chordBeats) {
   activeRiffFlat = riffFlattenTokens(riff);
   activeRiffData = riff;
   activeRiffBeatInRiff = 0;
+  activeRiffJustStarted = true;
   triggerRiffBuffer();
   const showRiffs = localStorage.getItem('uke-show-riffs') !== 'false';
   if (showRiffs) {
@@ -4077,6 +4079,7 @@ function triggerRiffBuffer() {
 
 function tickActiveRiff() {
   if (!activeRiffData) return;
+  if (activeRiffJustStarted) { activeRiffJustStarted = false; return; }
   activeRiffBeatInRiff++;
   if (activeRiffBeatInRiff >= activeRiffData.beats) {
     activeRiffBeatInRiff = 0;
