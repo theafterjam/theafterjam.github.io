@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Riff Playground — The After Jam</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #f5f0eb;
+    color: #333;
+    min-height: 100vh;
+  }
+  header {
+    background: #2c1810;
+    color: #f5f0eb;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  header h1 { font-size: 1.3em; font-weight: 600; white-space: nowrap; }
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .toolbar label { font-size: 0.85em; opacity: 0.85; }
+  .toolbar select, .toolbar input[type="number"] {
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid #5a3e2b;
+    background: #3d2517;
+    color: #f5f0eb;
+    font-size: 0.85em;
+  }
+  .toolbar input[type="number"] { width: 60px; text-align: center; }
+
+  .main { max-width: 1100px; margin: 0 auto; padding: 24px; }
+
+  .top-row {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 20px;
+  }
+  .input-panel { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+  .fretboard-panel { flex: 0 0 auto; }
+
+  textarea#riffInput {
+    width: 100%;
+    height: 180px;
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 0.9em;
+    padding: 12px;
+    border: 1px solid #c9b99a;
+    border-radius: 6px;
+    background: #fff;
+    resize: vertical;
+    line-height: 1.5;
+  }
+
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .controls button {
+    padding: 6px 14px;
+    border: 1px solid #c9b99a;
+    border-radius: 4px;
+    background: #fff;
+    font-size: 0.85em;
+    cursor: pointer;
+    font-weight: 500;
+  }
+  .controls button:hover { background: #f0ebe3; }
+  .controls button.primary {
+    background: #5b7a3a;
+    color: #fff;
+    border-color: #4a6630;
+  }
+  .controls button.primary:hover { background: #4a6630; }
+  .controls button.stop {
+    background: #a04040;
+    color: #fff;
+    border-color: #8a3030;
+  }
+  .controls button.stop:hover { background: #8a3030; }
+  .controls button:disabled { opacity: 0.5; cursor: default; }
+
+  .bpm-control {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85em;
+  }
+  .bpm-control input[type="range"] { width: 80px; }
+  .bpm-control input[type="number"] {
+    width: 52px;
+    padding: 3px 4px;
+    border: 1px solid #c9b99a;
+    border-radius: 3px;
+    text-align: center;
+    font-size: 0.85em;
+  }
+
+  .controls select {
+    padding: 5px 8px;
+    border: 1px solid #c9b99a;
+    border-radius: 4px;
+    background: #fff;
+    font-size: 0.85em;
+  }
+
+  .metronome-toggle {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.85em;
+    cursor: pointer;
+  }
+
+  /* --- Fretboard --- */
+  .fretboard-container {
+    background: #fff;
+    border: 1px solid #c9b99a;
+    border-radius: 6px;
+    padding: 16px;
+    overflow-y: auto;
+    max-height: 600px;
+  }
+  .fretboard-container svg { display: block; }
+  .fb-string { stroke: #555; stroke-width: 1; }
+  .fb-fret { stroke: #999; stroke-width: 1; }
+  .fb-nut { stroke: #333; stroke-width: 3; }
+  .fb-label { font-size: 12px; fill: #555; font-weight: 600; }
+  .fb-fret-num { font-size: 10px; fill: #999; text-anchor: middle; }
+  .fb-marker { fill: #ddd; }
+  .fb-dot {
+    fill: transparent;
+    stroke: none;
+    transition: fill 0.08s, stroke 0.08s, opacity 0.25s;
+  }
+  .fb-dot.active { fill: #e67e22; opacity: 1; }
+  .fb-dot.active-open { fill: transparent; stroke: #e67e22; stroke-width: 2.5; opacity: 1; }
+  .fb-dot.fading { fill: #c9b99a; opacity: 0.5; }
+  .fb-dot.fading-open { fill: transparent; stroke: #c9b99a; stroke-width: 2; opacity: 0.5; }
+
+  /* --- Beat counter --- */
+  .beat-display {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 10px;
+    font-size: 0.85em;
+    color: #666;
+  }
+  .beat-dots { display: flex; gap: 6px; }
+  .beat-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #ddd;
+    border: 1px solid #c9b99a;
+    transition: background 0.1s;
+  }
+  .beat-dot.active { background: #e67e22; border-color: #c0580a; }
+
+  /* --- Parse table --- */
+  .parse-section { margin-top: 20px; }
+  .parse-section h3 {
+    font-size: 0.95em;
+    font-weight: 600;
+    color: #5a3e2b;
+    margin-bottom: 8px;
+  }
+  table.parse-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82em;
+    background: #fff;
+    border: 1px solid #c9b99a;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .parse-table th {
+    background: #f0ebe3;
+    padding: 6px 10px;
+    text-align: left;
+    font-weight: 600;
+    color: #5a3e2b;
+    font-size: 0.85em;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .parse-table td {
+    padding: 5px 10px;
+    border-top: 1px solid #e8e0d4;
+    font-family: 'Consolas', 'Courier New', monospace;
+  }
+  .parse-table tr:hover td { background: #faf8f5; }
+  .parse-table tr.highlight td { background: #fff3e0; }
+  .parse-table .subdiv { color: #8b6914; font-style: italic; }
+  .parse-table .rest { color: #999; }
+
+  /* --- Status bar --- */
+  .status-bar {
+    margin-top: 12px;
+    padding: 8px 14px;
+    border-radius: 4px;
+    font-size: 0.85em;
+    font-weight: 500;
+  }
+  .status-bar.ok { background: #e8f5e9; color: #2e7d32; border: 1px solid #a5d6a7; }
+  .status-bar.error { background: #fbe9e7; color: #c62828; border: 1px solid #ef9a9a; }
+  .status-bar.warning { background: #fff8e1; color: #f57f17; border: 1px solid #ffe082; }
+  .status-bar.idle { background: #f5f0eb; color: #888; border: 1px solid #c9b99a; }
+  .status-bar ul { margin: 4px 0 0 16px; font-weight: 400; }
+
+  @media (max-width: 768px) {
+    .top-row { flex-direction: column; }
+    .input-panel { flex: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Riff Playground</h1>
+  <div class="toolbar">
+    <label>Tuning:</label>
+    <select id="tuningSelect" onchange="onTuningChange()">
+      <option value="GCEA">Low G (GCEA)</option>
+      <option value="DGBE">Baritone (DGBE)</option>
+    </select>
+  </div>
+</header>
+
+<div class="main">
+  <div class="top-row">
+    <div class="input-panel">
+      <textarea id="riffInput" spellcheck="false">{riff: c_scale, 4}
+C0:0.5 C2:0.5 E0:0.5 E1:0.5 E3:0.5 A0:0.5 A2:0.5 A3:0.5
+{end_riff}</textarea>
+      <div class="controls">
+        <div class="bpm-control">
+          <label>BPM:</label>
+          <input type="range" id="bpmSlider" min="40" max="200" value="100" oninput="syncBpm(this.value)">
+          <input type="number" id="bpmInput" min="40" max="200" value="100" onchange="syncBpm(this.value)">
+        </div>
+      </div>
+      <div class="controls">
+        <button onclick="parseAndDisplay()">Parse</button>
+        <button class="primary" id="playBtn" onclick="startPlayback()">Play</button>
+        <button class="stop" id="stopBtn" onclick="stopPlayback()" disabled>Stop</button>
+        <select id="exampleSelect" onchange="loadExample(this.value)">
+          <option value="">Examples...</option>
+        </select>
+      </div>
+      <div class="controls">
+        <label class="metronome-toggle">
+          <input type="checkbox" id="metronomeCheck"> Metronome
+        </label>
+      </div>
+    </div>
+    <div class="fretboard-panel">
+      <div class="fretboard-container">
+        <svg id="fretboard"></svg>
+      </div>
+      <div class="beat-display">
+        <div class="beat-dots" id="beatDots"></div>
+        <span id="beatLabel">Beat: — / —</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="parse-section">
+    <h3>Parse Visualization</h3>
+    <table class="parse-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Token</th>
+          <th>Type</th>
+          <th>String</th>
+          <th>Fret</th>
+          <th>MIDI</th>
+          <th>Start</th>
+          <th>Dur</th>
+          <th>Actual Dur</th>
+          <th>Actual End</th>
+        </tr>
+      </thead>
+      <tbody id="parseTableBody"></tbody>
+    </table>
+  </div>
+
+  <div class="status-bar idle" id="statusBar">Enter a riff and click Parse.</div>
+</div>
+
+<script>
+// === Constants & Tuning ===
+
+const OPEN_STRING_MIDI = {
+  GCEA: { G: 55, C: 60, E: 64, A: 69 },  // Low G tuning: G3, C4, E4, A4
+  DGBE: { D: 50, G: 55, B: 59, E: 64 }
+};
+
+const STRING_ORDER = {
+  GCEA: ['G', 'C', 'E', 'A'],
+  DGBE: ['D', 'G', 'B', 'E']
+};
+
+const SWING_LONG = 2 / 3;
+const SWING_SHORT = 1 / 3;
+
+function midiToFreq(midi) {
+  return 440 * Math.pow(2, (midi - 69) / 12);
+}
+
+function getTuning() {
+  return document.getElementById('tuningSelect').value;
+}
+
+function getBpm() {
+  return parseInt(document.getElementById('bpmInput').value) || 100;
+}
+
+function syncBpm(val) {
+  val = Math.max(40, Math.min(200, parseInt(val) || 100));
+  document.getElementById('bpmSlider').value = val;
+  document.getElementById('bpmInput').value = val;
+}
+
+// === Examples ===
+
+const EXAMPLES = {
+  'Simple Scale': '{riff: c_scale, 4}\nC0:0.5 C2:0.5 E0:0.5 E1:0.5 E3:0.5 A0:0.5 A2:0.5 A3:0.5\n{end_riff}',
+  'Jazz Lick (swing)': '{riff: jazz_lick, 4, swing}\nR:1 A3:0.5 E2:0.5 C0:0.5 G2:0.5 E3:1\n{end_riff}',
+  'Triplet Pattern': '{riff: triplet_demo, 4}\nA3:1 3(E2 C0 G2):1 A5:1 R:1\n{end_riff}',
+  'Double Stops': '{riff: double_stops, 4}\nE2+A3:1 C0+G2:1 E3+A5:0.5 E2+A3:0.5 C0+G2:1\n{end_riff}',
+  'Swing with Rests': '{riff: swing_rest, 4, swing}\nA3:0.5 R:0.5 E2:0.5 A0:0.5 C0:1 R:1\n{end_riff}'
+};
+
+function initExamples() {
+  const sel = document.getElementById('exampleSelect');
+  for (const name of Object.keys(EXAMPLES)) {
+    const opt = document.createElement('option');
+    opt.value = name;
+    opt.textContent = name;
+    sel.appendChild(opt);
+  }
+}
+
+function loadExample(name) {
+  if (!name || !EXAMPLES[name]) return;
+  document.getElementById('riffInput').value = EXAMPLES[name];
+  document.getElementById('exampleSelect').value = '';
+  parseAndDisplay();
+}
+
+// === Parser ===
+
+function parseRiff(text, tuning) {
+  const result = { name: '', beats: 0, swing: false, tokens: [], errors: [], warnings: [] };
+
+  const headerMatch = text.match(/\{riff:\s*([^,}]+)\s*,\s*([\d.]+)\s*(?:,\s*(swing))?\s*\}/i);
+  if (!headerMatch) {
+    result.errors.push('Missing or invalid riff header. Expected: {riff: name, beats, [swing]}');
+    return result;
+  }
+  result.name = headerMatch[1].trim();
+  result.beats = parseFloat(headerMatch[2]);
+  result.swing = !!headerMatch[3];
+  if (isNaN(result.beats) || result.beats <= 0) {
+    result.errors.push('Beat count must be a positive number.');
+    return result;
+  }
+
+  const endMatch = text.match(/\{end_riff\}/i);
+  if (!endMatch) {
+    result.errors.push('Missing {end_riff}.');
+    return result;
+  }
+
+  const headerEnd = text.indexOf('}') + 1;
+  const bodyEnd = text.indexOf('{end_riff}');
+  const body = text.substring(headerEnd, bodyEnd).trim();
+  if (!body) {
+    result.errors.push('Empty riff body.');
+    return result;
+  }
+
+  const rawTokens = tokenize(body);
+  const validStrings = Object.keys(OPEN_STRING_MIDI[tuning]);
+
+  let runningBeat = 0;
+  for (const raw of rawTokens) {
+    const token = parseToken(raw, tuning, validStrings, runningBeat, result.errors);
+    if (!token) continue;
+    result.tokens.push(token);
+    runningBeat += token.duration;
+  }
+
+  const totalDuration = result.tokens.reduce((s, t) => s + t.duration, 0);
+  if (Math.abs(totalDuration - result.beats) > 0.001) {
+    result.errors.push('Duration mismatch: tokens sum to ' + totalDuration.toFixed(3) + ' beats but riff declares ' + result.beats + ' beats.');
+  }
+
+  if (result.swing) {
+    applySwing(result.tokens);
+    let hasSwungPair = false;
+    for (const t of result.tokens) if (t.swung) hasSwungPair = true;
+    if (!hasSwungPair) {
+      result.warnings.push('Swing flag is set but no consecutive eighth-note pairs found.');
+    }
+  } else {
+    for (const t of result.tokens) {
+      t.actualDuration = t.duration;
+      t.actualStart = t.startBeat;
+      if (t.type === 'subdivision' && t.children) {
+        let childStart = t.startBeat;
+        for (const c of t.children) {
+          c.actualDuration = c.duration;
+          c.actualStart = childStart;
+          childStart += c.duration;
+        }
+      }
+    }
+  }
+
+  return result;
+}
+
+function tokenize(body) {
+  const tokens = [];
+  let current = '';
+  let depth = 0;
+  for (const ch of body) {
+    if (ch === '(') depth++;
+    if (ch === ')') depth--;
+    if (/\s/.test(ch) && depth === 0) {
+      if (current.trim()) tokens.push(current.trim());
+      current = '';
+    } else {
+      current += ch;
+    }
+  }
+  if (current.trim()) tokens.push(current.trim());
+  return tokens;
+}
+
+function parseToken(raw, tuning, validStrings, startBeat, errors) {
+  const subdivMatch = raw.match(/^(\d+)\((.+)\):([\d.]+)$/);
+  if (subdivMatch) {
+    const count = parseInt(subdivMatch[1]);
+    const innerText = subdivMatch[2];
+    const totalDur = parseFloat(subdivMatch[3]);
+    if (isNaN(totalDur) || totalDur <= 0) {
+      errors.push("Invalid duration in subdivision '" + raw + "'.");
+      return null;
+    }
+    if (count < 2) {
+      errors.push("Subdivision count must be >= 2 in '" + raw + "'.");
+      return null;
+    }
+    const innerRaw = innerText.trim().split(/\s+/);
+    if (innerRaw.length !== count) {
+      errors.push("Subdivision '" + raw + "' declares " + count + " notes but has " + innerRaw.length + ".");
+      return null;
+    }
+    const childDur = totalDur / count;
+    const children = [];
+    let childStart = startBeat;
+    for (const ir of innerRaw) {
+      const child = parseSingleToken(ir, childDur, tuning, validStrings, childStart, errors);
+      if (child) {
+        children.push(child);
+        childStart += childDur;
+      }
+    }
+    return {
+      type: 'subdivision', raw, count, duration: totalDur, startBeat,
+      actualDuration: totalDur, actualStart: startBeat, swung: false, children
+    };
+  }
+
+  const colonIdx = raw.lastIndexOf(':');
+  if (colonIdx === -1) {
+    errors.push("Missing duration in token '" + raw + "'. Expected format: Note:Duration");
+    return null;
+  }
+  const durStr = raw.substring(colonIdx + 1);
+  const dur = parseFloat(durStr);
+  if (isNaN(dur) || dur <= 0) {
+    errors.push("Invalid duration '" + durStr + "' in token '" + raw + "'.");
+    return null;
+  }
+
+  return parseSingleToken(raw, dur, tuning, validStrings, startBeat, errors);
+}
+
+function parseSingleToken(raw, duration, tuning, validStrings, startBeat, errors) {
+  const colonIdx = raw.lastIndexOf(':');
+  const notePart = colonIdx >= 0 ? raw.substring(0, colonIdx) : raw;
+
+  if (notePart === 'R' || notePart === 'r') {
+    return {
+      type: 'rest', raw, duration, startBeat,
+      actualDuration: duration, actualStart: startBeat, swung: false
+    };
+  }
+
+  const noteSegments = notePart.split('+');
+  const notes = [];
+  for (const seg of noteSegments) {
+    const m = seg.match(/^([A-Za-z])(\d+)$/);
+    if (!m) {
+      errors.push("Invalid note '" + seg + "' in token '" + raw + "'. Expected: StringFret (e.g. A3).");
+      return null;
+    }
+    const stringName = m[1].toUpperCase();
+    const fret = parseInt(m[2]);
+    if (!validStrings.includes(stringName)) {
+      errors.push("Unknown string '" + stringName + "' in token '" + raw + "'. Valid strings for " + tuning + ": " + validStrings.join(', ') + ".");
+      return null;
+    }
+    if (fret < 0 || fret > 24) {
+      errors.push("Fret " + fret + " out of range (0-24) in token '" + raw + "'.");
+      return null;
+    }
+    const midi = OPEN_STRING_MIDI[tuning][stringName] + fret;
+    notes.push({ string: stringName, fret, midi });
+  }
+
+  return {
+    type: 'note', raw, notes, duration, startBeat,
+    actualDuration: duration, actualStart: startBeat, swung: false
+  };
+}
+
+function applySwing(tokens) {
+  let pairFirst = null;
+
+  for (const t of tokens) {
+    if (t.type === 'subdivision') {
+      pairFirst = null;
+      t.actualDuration = t.duration;
+      t.swung = false;
+      let childStart = t.actualStart;
+      for (const c of t.children) {
+        c.actualDuration = c.duration;
+        c.actualStart = childStart;
+        c.swung = false;
+        childStart += c.duration;
+      }
+      continue;
+    }
+
+    if (t.duration === 0.5) {
+      if (!pairFirst) {
+        pairFirst = t;
+      } else {
+        pairFirst.actualDuration = SWING_LONG;
+        pairFirst.swung = true;
+        t.actualDuration = SWING_SHORT;
+        t.swung = true;
+        pairFirst = null;
+      }
+    } else {
+      if (pairFirst) {
+        pairFirst.actualDuration = pairFirst.duration;
+        pairFirst.swung = false;
+      }
+      pairFirst = null;
+      t.actualDuration = t.duration;
+      t.swung = false;
+    }
+  }
+
+  if (pairFirst) {
+    pairFirst.actualDuration = pairFirst.duration;
+    pairFirst.swung = false;
+  }
+
+  let running = 0;
+  for (const t of tokens) {
+    t.actualStart = running;
+    running += t.actualDuration;
+    if (t.type === 'subdivision' && t.children) {
+      let childStart = t.actualStart;
+      for (const c of t.children) {
+        c.actualStart = childStart;
+        childStart += c.actualDuration;
+      }
+    }
+  }
+}
+
+// === Parse Visualization ===
+
+let currentRiff = null;
+
+function parseAndDisplay() {
+  const text = document.getElementById('riffInput').value;
+  const tuning = getTuning();
+  currentRiff = parseRiff(text, tuning);
+  renderParseTable(currentRiff);
+  renderStatus(currentRiff);
+  renderBeatDots(currentRiff.beats);
+  return currentRiff;
+}
+
+function renderParseTable(riff) {
+  const tbody = document.getElementById('parseTableBody');
+  tbody.innerHTML = '';
+  let idx = 1;
+
+  function addRow(token, indent) {
+    const tr = document.createElement('tr');
+    tr.dataset.actualStart = token.actualStart;
+    tr.dataset.actualEnd = (token.actualStart + token.actualDuration);
+    if (token.type === 'rest') tr.className = 'rest';
+    if (indent) tr.className = (tr.className + ' subdiv').trim();
+
+    const prefix = indent ? '  ' : '';
+    let strings = '', frets = '', midis = '';
+    if (token.type === 'note' && token.notes) {
+      strings = token.notes.map(n => n.string).join('+');
+      frets = token.notes.map(n => n.fret).join('+');
+      midis = token.notes.map(n => n.midi).join('+');
+    }
+
+    tr.innerHTML =
+      '<td>' + (idx++) + '</td>' +
+      '<td>' + prefix + escapeHtml(token.raw || '') + '</td>' +
+      '<td>' + token.type + (token.count ? '(' + token.count + ')' : '') + '</td>' +
+      '<td>' + strings + '</td>' +
+      '<td>' + frets + '</td>' +
+      '<td>' + midis + '</td>' +
+      '<td>' + token.startBeat.toFixed(3) + '</td>' +
+      '<td>' + token.duration.toFixed(3) + '</td>' +
+      '<td>' + token.actualDuration.toFixed(3) + (token.swung ? '*' : '') + '</td>' +
+      '<td>' + (token.actualStart + token.actualDuration).toFixed(3) + '</td>';
+    tbody.appendChild(tr);
+  }
+
+  for (const token of riff.tokens) {
+    if (token.type === 'subdivision') {
+      addRow(token, false);
+      for (const child of token.children) {
+        addRow(child, true);
+      }
+    } else {
+      addRow(token, false);
+    }
+  }
+}
+
+function renderStatus(riff) {
+  const bar = document.getElementById('statusBar');
+  if (riff.errors.length > 0) {
+    bar.className = 'status-bar error';
+    bar.innerHTML = 'Errors:<ul>' + riff.errors.map(e => '<li>' + escapeHtml(e) + '</li>').join('') + '</ul>';
+  } else if (riff.warnings.length > 0) {
+    bar.className = 'status-bar warning';
+    const total = riff.tokens.reduce((s, t) => s + t.duration, 0);
+    bar.innerHTML = 'Parsed OK — ' + total + ' beats, ' + riff.name + (riff.swing ? ', swing' : '') +
+      '<ul>' + riff.warnings.map(w => '<li>' + escapeHtml(w) + '</li>').join('') + '</ul>';
+  } else if (riff.tokens.length > 0) {
+    bar.className = 'status-bar ok';
+    const total = riff.tokens.reduce((s, t) => s + t.duration, 0);
+    bar.textContent = 'Parsed OK — ' + total + ' beats, ' + riff.name + (riff.swing ? ', swing' : '') + (riff.swing ? ' (* = swung)' : '');
+  } else {
+    bar.className = 'status-bar idle';
+    bar.textContent = 'Enter a riff and click Parse.';
+  }
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// === SVG Fretboard ===
+
+const FB_FRETS = 12;
+const FB_TOP_MARGIN = 36;
+const FB_LEFT_MARGIN = 24;
+const FB_FRET_HEIGHT = 44;
+const FB_STRING_SPACING = 32;
+const FB_DOT_R = 8;
+const FB_BOTTOM_PAD = 16;
+const FB_RIGHT_PAD = 12;
+
+let dotElements = {};
+
+function renderFretboard() {
+  const tuning = getTuning();
+  const strings = STRING_ORDER[tuning];
+  const svg = document.getElementById('fretboard');
+  const w = FB_LEFT_MARGIN + (strings.length - 1) * FB_STRING_SPACING + FB_RIGHT_PAD;
+  const h = FB_TOP_MARGIN + FB_FRETS * FB_FRET_HEIGHT + FB_BOTTOM_PAD;
+  svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+  svg.setAttribute('width', w);
+  svg.setAttribute('height', h);
+  svg.innerHTML = '';
+  dotElements = {};
+
+  const nutY = FB_TOP_MARGIN;
+  const firstStringX = FB_LEFT_MARGIN;
+
+  // String labels at top
+  for (let i = 0; i < strings.length; i++) {
+    const x = firstStringX + i * FB_STRING_SPACING;
+    const lbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    lbl.setAttribute('x', x);
+    lbl.setAttribute('y', nutY - 10);
+    lbl.setAttribute('class', 'fb-fret-num');
+    lbl.setAttribute('style', 'font-size:12px;font-weight:600;fill:#555');
+    lbl.textContent = strings[i];
+    svg.appendChild(lbl);
+  }
+
+  // Nut (horizontal, thick)
+  const nut = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  nut.setAttribute('x1', firstStringX - 6); nut.setAttribute('y1', nutY);
+  nut.setAttribute('x2', firstStringX + (strings.length - 1) * FB_STRING_SPACING + 6); nut.setAttribute('y2', nutY);
+  nut.setAttribute('class', 'fb-nut');
+  svg.appendChild(nut);
+
+  // Fret lines (horizontal)
+  for (let f = 1; f <= FB_FRETS; f++) {
+    const y = nutY + f * FB_FRET_HEIGHT;
+    const fl = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    fl.setAttribute('x1', firstStringX - 6); fl.setAttribute('y1', y);
+    fl.setAttribute('x2', firstStringX + (strings.length - 1) * FB_STRING_SPACING + 6); fl.setAttribute('y2', y);
+    fl.setAttribute('class', 'fb-fret');
+    svg.appendChild(fl);
+  }
+
+  // Fret numbers on the left
+  for (let f = 1; f <= FB_FRETS; f++) {
+    const y = nutY + (f - 0.5) * FB_FRET_HEIGHT;
+    const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    txt.setAttribute('x', 8);
+    txt.setAttribute('y', y + 4);
+    txt.setAttribute('class', 'fb-fret-num');
+    txt.textContent = f;
+    svg.appendChild(txt);
+  }
+
+  // Fret markers (5, 7, 9, 12)
+  const markers = [5, 7, 9];
+  const doubleMarkers = [12];
+  const midX = firstStringX + (strings.length - 1) * FB_STRING_SPACING / 2;
+  for (const f of markers) {
+    if (f > FB_FRETS) continue;
+    const cy = nutY + (f - 0.5) * FB_FRET_HEIGHT;
+    const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    c.setAttribute('cx', midX); c.setAttribute('cy', cy);
+    c.setAttribute('r', 4); c.setAttribute('class', 'fb-marker');
+    svg.appendChild(c);
+  }
+  for (const f of doubleMarkers) {
+    if (f > FB_FRETS) continue;
+    const cy = nutY + (f - 0.5) * FB_FRET_HEIGHT;
+    for (const offset of [-FB_STRING_SPACING * 0.6, FB_STRING_SPACING * 0.6]) {
+      const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      c.setAttribute('cx', midX + offset); c.setAttribute('cy', cy);
+      c.setAttribute('r', 4); c.setAttribute('class', 'fb-marker');
+      svg.appendChild(c);
+    }
+  }
+
+  // Strings (vertical lines)
+  for (let i = 0; i < strings.length; i++) {
+    const x = firstStringX + i * FB_STRING_SPACING;
+    const sl = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    sl.setAttribute('x1', x); sl.setAttribute('y1', nutY);
+    sl.setAttribute('x2', x); sl.setAttribute('y2', nutY + FB_FRETS * FB_FRET_HEIGHT);
+    sl.setAttribute('class', 'fb-string');
+    svg.appendChild(sl);
+  }
+
+  // Pre-create dots
+  for (let i = 0; i < strings.length; i++) {
+    const stringName = strings[i];
+    const x = firstStringX + i * FB_STRING_SPACING;
+    for (let f = 0; f <= FB_FRETS; f++) {
+      const cy = f === 0 ? nutY - 14 : nutY + (f - 0.5) * FB_FRET_HEIGHT;
+      const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      c.setAttribute('cx', x); c.setAttribute('cy', cy);
+      c.setAttribute('r', FB_DOT_R); c.setAttribute('class', 'fb-dot');
+      svg.appendChild(c);
+      dotElements[stringName + ':' + f] = c;
+    }
+  }
+}
+
+function clearFretboardDots() {
+  for (const key in dotElements) {
+    dotElements[key].setAttribute('class', 'fb-dot');
+  }
+}
+
+function activateDot(stringName, fret) {
+  const key = stringName + ':' + fret;
+  if (dotElements[key]) {
+    dotElements[key].setAttribute('class', fret === 0 ? 'fb-dot active-open' : 'fb-dot active');
+  }
+}
+
+function fadeDot(stringName, fret) {
+  const key = stringName + ':' + fret;
+  const fadingClass = fret === 0 ? 'fb-dot fading-open' : 'fb-dot fading';
+  if (dotElements[key]) {
+    dotElements[key].setAttribute('class', fadingClass);
+    setTimeout(() => {
+      const cls = dotElements[key] && dotElements[key].getAttribute('class');
+      if (cls === fadingClass) {
+        dotElements[key].setAttribute('class', 'fb-dot');
+      }
+    }, 300);
+  }
+}
+
+// === Beat display ===
+
+function renderBeatDots(beats) {
+  const container = document.getElementById('beatDots');
+  container.innerHTML = '';
+  const count = Math.max(1, Math.ceil(beats));
+  for (let i = 0; i < count; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'beat-dot';
+    container.appendChild(dot);
+  }
+  document.getElementById('beatLabel').textContent = 'Beat: — / ' + beats;
+}
+
+function updateBeatDisplay(currentBeat, totalBeats) {
+  const dots = document.querySelectorAll('.beat-dot');
+  const activeBeat = Math.floor(currentBeat);
+  dots.forEach((d, i) => {
+    d.className = 'beat-dot' + (i === activeBeat ? ' active' : '');
+  });
+  document.getElementById('beatLabel').textContent = 'Beat: ' + currentBeat.toFixed(1) + ' / ' + totalBeats;
+}
+
+// === Audio Engine ===
+
+let audioCtx = null;
+let activeOscillators = [];
+
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+function playUkeNote(ctx, dest, time, freq, duration) {
+  const safeEnd = time + Math.max(duration, 0.05);
+
+  // Fundamental
+  const osc1 = ctx.createOscillator();
+  const gain1 = ctx.createGain();
+  osc1.type = 'sine';
+  osc1.frequency.value = freq;
+  gain1.gain.setValueAtTime(0.25, time);
+  gain1.gain.exponentialRampToValueAtTime(0.001, safeEnd);
+  osc1.connect(gain1);
+  gain1.connect(dest);
+  osc1.start(time);
+  osc1.stop(safeEnd + 0.05);
+  activeOscillators.push(osc1);
+
+  // 2nd harmonic
+  const osc2 = ctx.createOscillator();
+  const gain2 = ctx.createGain();
+  osc2.type = 'sine';
+  osc2.frequency.value = freq * 2;
+  gain2.gain.setValueAtTime(0.15, time);
+  gain2.gain.exponentialRampToValueAtTime(0.001, time + Math.max(duration * 0.7, 0.04));
+  osc2.connect(gain2);
+  gain2.connect(dest);
+  osc2.start(time);
+  osc2.stop(safeEnd + 0.05);
+  activeOscillators.push(osc2);
+
+  // 3rd harmonic
+  const osc3 = ctx.createOscillator();
+  const gain3 = ctx.createGain();
+  osc3.type = 'sine';
+  osc3.frequency.value = freq * 3;
+  gain3.gain.setValueAtTime(0.06, time);
+  gain3.gain.exponentialRampToValueAtTime(0.001, time + Math.max(duration * 0.4, 0.03));
+  osc3.connect(gain3);
+  gain3.connect(dest);
+  osc3.start(time);
+  osc3.stop(safeEnd + 0.05);
+  activeOscillators.push(osc3);
+
+  // Pluck transient
+  const bufferSize = ctx.sampleRate * 0.012;
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+  const noise = ctx.createBufferSource();
+  noise.buffer = buffer;
+  const bp = ctx.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.frequency.value = 3000;
+  bp.Q.value = 1.5;
+  const noiseGain = ctx.createGain();
+  noiseGain.gain.setValueAtTime(0.08, time);
+  noiseGain.gain.exponentialRampToValueAtTime(0.001, time + 0.012);
+  noise.connect(bp);
+  bp.connect(noiseGain);
+  noiseGain.connect(dest);
+  noise.start(time);
+  noise.stop(time + 0.02);
+  activeOscillators.push(noise);
+}
+
+function playClick(ctx, dest, time, accent) {
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'sine';
+  osc.frequency.value = accent ? 1000 : 700;
+  gain.gain.setValueAtTime(accent ? 0.3 : 0.15, time);
+  gain.gain.exponentialRampToValueAtTime(0.001, time + 0.08);
+  osc.connect(gain);
+  gain.connect(dest);
+  osc.start(time);
+  osc.stop(time + 0.1);
+  activeOscillators.push(osc);
+}
+
+// === Playback Controller ===
+
+let isPlaying = false;
+let animFrameId = null;
+let playStartTime = 0;
+
+function flattenTokens(riff) {
+  const flat = [];
+  for (const t of riff.tokens) {
+    if (t.type === 'subdivision' && t.children) {
+      for (const c of t.children) flat.push(c);
+    } else {
+      flat.push(t);
+    }
+  }
+  return flat;
+}
+
+function startPlayback() {
+  if (isPlaying) stopPlayback();
+  const riff = parseAndDisplay();
+  if (!riff || riff.errors.length > 0 || riff.tokens.length === 0) return;
+
+  const ctx = getAudioCtx();
+  const dest = ctx.destination;
+  const bpm = getBpm();
+  const secPerBeat = 60 / bpm;
+
+  playStartTime = ctx.currentTime + 0.1;
+  activeOscillators = [];
+
+  const flat = flattenTokens(riff);
+
+  // Schedule all audio
+  for (const token of flat) {
+    const time = playStartTime + token.actualStart * secPerBeat;
+    const dur = token.actualDuration * secPerBeat;
+    if (token.type === 'note' && token.notes) {
+      for (const note of token.notes) {
+        playUkeNote(ctx, dest, time, midiToFreq(note.midi), dur);
+      }
+    }
+  }
+
+  // Metronome
+  if (document.getElementById('metronomeCheck').checked) {
+    for (let beat = 0; beat < riff.beats; beat++) {
+      const time = playStartTime + beat * secPerBeat;
+      playClick(ctx, dest, time, beat === 0);
+    }
+  }
+
+  isPlaying = true;
+  document.getElementById('playBtn').disabled = true;
+  document.getElementById('stopBtn').disabled = false;
+
+  // Animation loop
+  function animate() {
+    if (!isPlaying) return;
+    const elapsed = ctx.currentTime - playStartTime;
+    const currentBeat = elapsed / secPerBeat;
+
+    if (currentBeat >= riff.beats) {
+      stopPlayback();
+      return;
+    }
+
+    updateBeatDisplay(Math.max(0, currentBeat), riff.beats);
+
+    // Highlight fretboard dots
+    clearFretboardDots();
+    for (const token of flat) {
+      const tStart = token.actualStart;
+      const tEnd = tStart + token.actualDuration;
+      if (currentBeat >= tStart && currentBeat < tEnd && token.type === 'note' && token.notes) {
+        for (const note of token.notes) {
+          activateDot(note.string, note.fret);
+        }
+      }
+    }
+
+    // Highlight table rows
+    const rows = document.querySelectorAll('#parseTableBody tr');
+    rows.forEach(row => {
+      const rs = parseFloat(row.dataset.actualStart);
+      const re = parseFloat(row.dataset.actualEnd);
+      if (!isNaN(rs) && currentBeat >= rs && currentBeat < re) {
+        row.classList.add('highlight');
+      } else {
+        row.classList.remove('highlight');
+      }
+    });
+
+    animFrameId = requestAnimationFrame(animate);
+  }
+
+  animFrameId = requestAnimationFrame(animate);
+}
+
+function stopPlayback() {
+  isPlaying = false;
+  if (animFrameId) {
+    cancelAnimationFrame(animFrameId);
+    animFrameId = null;
+  }
+
+  for (const osc of activeOscillators) {
+    try { osc.stop(); } catch (e) {}
+  }
+  activeOscillators = [];
+
+  clearFretboardDots();
+  document.querySelectorAll('#parseTableBody tr').forEach(r => r.classList.remove('highlight'));
+
+  document.getElementById('playBtn').disabled = false;
+  document.getElementById('stopBtn').disabled = true;
+
+  if (currentRiff) {
+    renderBeatDots(currentRiff.beats);
+  }
+}
+
+function onTuningChange() {
+  renderFretboard();
+  if (document.getElementById('riffInput').value.trim()) {
+    parseAndDisplay();
+  }
+}
+
+// === Init ===
+
+initExamples();
+renderFretboard();
+parseAndDisplay();
+</script>
+</body>
+</html>

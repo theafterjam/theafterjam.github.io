@@ -1,0 +1,1313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ukulele Chord Lookup</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #f5f0eb;
+    color: #333;
+    min-height: 100vh;
+  }
+  header {
+    background: #2c1810;
+    color: #f5f0eb;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  header h1 {
+    font-size: 1.3em;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .toolbar label {
+    font-size: 0.85em;
+    opacity: 0.85;
+  }
+  .toolbar select {
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid #5a3e2b;
+    background: #3d2517;
+    color: #f5f0eb;
+    font-size: 0.85em;
+  }
+  .main {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 24px;
+  }
+  .search-area {
+    position: relative;
+    margin-bottom: 16px;
+  }
+  #chordInput {
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 1.2em;
+    border: 2px solid #c9b99a;
+    border-radius: 8px;
+    background: #fff;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  #chordInput:focus {
+    border-color: #8b6914;
+  }
+  #chordInput::placeholder {
+    color: #aaa;
+  }
+  .dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #fff;
+    border: 1px solid #c9b99a;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    max-height: 260px;
+    overflow-y: auto;
+    z-index: 10;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    display: none;
+  }
+  .dropdown.open { display: block; }
+  .dropdown-item {
+    padding: 8px 16px;
+    cursor: pointer;
+    font-size: 1em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .dropdown-item:hover,
+  .dropdown-item.active {
+    background: #f0e8d8;
+  }
+  .dropdown-item .chord-name {
+    font-weight: 600;
+    min-width: 80px;
+  }
+  .dropdown-item .chord-frets {
+    color: #888;
+    font-size: 0.85em;
+  }
+  .result-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    margin-top: 8px;
+  }
+  .chord-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: #fff;
+    border-radius: 12px;
+    padding: 24px 32px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    min-width: 200px;
+  }
+  .chord-display svg {
+    transform: scale(2);
+    transform-origin: top center;
+    margin-bottom: 80px;
+  }
+  .chord-fret-label {
+    font-size: 0.9em;
+    color: #888;
+    margin-top: 8px;
+  }
+  .voicing-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+  }
+  .voicing-label {
+    font-size: 0.85em;
+    color: #666;
+  }
+  .voicing-btn, .export-btn {
+    padding: 5px 14px;
+    background: #2c1810;
+    color: #f5f0eb;
+    border: none;
+    border-radius: 5px;
+    font-size: 0.8em;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .voicing-btn:hover, .export-btn:hover { background: #4a2c1a; }
+  .voicing-btn:disabled { background: #aaa; cursor: default; }
+  .not-found {
+    background: #fff;
+    border-radius: 12px;
+    padding: 24px 32px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    text-align: center;
+    max-width: 400px;
+    width: 100%;
+  }
+  .not-found h3 {
+    color: #8b6914;
+    margin-bottom: 12px;
+    font-size: 1.1em;
+  }
+  .not-found p {
+    color: #666;
+    margin-bottom: 16px;
+    font-size: 0.9em;
+  }
+  .fret-inputs {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    align-items: flex-end;
+    margin-bottom: 16px;
+  }
+  .fret-input-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  .fret-input-group label {
+    font-size: 0.75em;
+    color: #888;
+    font-weight: 600;
+  }
+  .fret-input-group input {
+    width: 42px;
+    height: 42px;
+    text-align: center;
+    font-size: 1.1em;
+    border: 2px solid #c9b99a;
+    border-radius: 6px;
+    outline: none;
+    background: #faf8f4;
+  }
+  .fret-input-group input:focus {
+    border-color: #8b6914;
+  }
+  .render-btn {
+    padding: 8px 24px;
+    background: #2c1810;
+    color: #f5f0eb;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.95em;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .render-btn:hover { background: #4a2c1a; }
+  .hint {
+    font-size: 0.8em;
+    color: #aaa;
+    margin-top: 4px;
+  }
+  .enharmonic-note {
+    font-size: 0.85em;
+    color: #888;
+    margin-top: 2px;
+  }
+  .all-chords-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+  }
+  .all-chords-grid .chord-card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 8px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    cursor: pointer;
+    transition: box-shadow 0.15s, transform 0.15s;
+  }
+  .all-chords-grid .chord-card:hover {
+    box-shadow: 0 3px 12px rgba(0,0,0,0.12);
+    transform: translateY(-2px);
+  }
+  .section-label {
+    font-size: 0.85em;
+    color: #888;
+    margin-bottom: 8px;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Ukulele Chord Lookup</h1>
+  <div class="toolbar">
+    <label>Tuning:</label>
+    <select id="tuningSelect">
+      <option value="GCEA">Standard (GCEA)</option>
+      <option value="DGBE">Baritone (DGBE)</option>
+    </select>
+  </div>
+</header>
+<div class="main">
+  <div class="search-area">
+    <input type="text" id="chordInput" placeholder="Type a chord name (e.g. Am7, Ebmaj7, F#dim)" autocomplete="off" spellcheck="false">
+    <div class="dropdown" id="dropdown"></div>
+  </div>
+  <div class="result-area" id="resultArea"></div>
+</div>
+
+<script>
+const ChordLibrary = (() => {
+  const NOTES_SHARP = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  const NOTES_FLAT  = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+
+  // For internal CHORDS key lookup — flat notation except F#
+  const CHORD_KEYS = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B'];
+
+  const TUNING_LABELS = {
+    GCEA: ['G', 'C', 'E', 'A'],
+    DGBE: ['D', 'G', 'B', 'E']
+  };
+
+  function normalizeRootIndex(root) {
+    let idx = NOTES_SHARP.indexOf(root);
+    if (idx >= 0) return idx;
+    idx = NOTES_FLAT.indexOf(root);
+    if (idx >= 0) return idx;
+    if (root === 'F#') return 6;
+    return -1;
+  }
+
+  const QUALITY_ALIASES = {
+    'mmaj7': 'mMaj7', 'm(maj7)': 'mMaj7', 'm(Maj7)': 'mMaj7',
+    '7b5': '7#11',
+    '+7': '7#5',
+  };
+
+  function normalizeQuality(q) {
+    return QUALITY_ALIASES[q] || q;
+  }
+
+  function parseChord(name) {
+    if (!name) return null;
+    let root, quality;
+    if (name.length > 1 && (name[1] === '#' || name[1] === 'b')) {
+      root = name.substring(0, 2);
+      quality = name.substring(2);
+    } else {
+      root = name[0];
+      quality = name.substring(1);
+    }
+    quality = normalizeQuality(quality);
+    const rootIndex = normalizeRootIndex(root);
+    if (rootIndex < 0) return null;
+    return { root, quality, rootIndex };
+  }
+
+  function transposeChord(name, semitones, useFlats) {
+    const slashIdx = name.indexOf('/');
+    if (slashIdx > 0) {
+      const main = name.substring(0, slashIdx);
+      const bass = name.substring(slashIdx + 1);
+      return transposeChord(main, semitones, useFlats) + '/' + transposeChord(bass, semitones, useFlats);
+    }
+    const parsed = parseChord(name);
+    if (!parsed) return name;
+    if (semitones === 0) return name;
+    const originalUsesFlats = parsed.root.includes('b');
+    const newIndex = ((parsed.rootIndex + semitones) % 12 + 12) % 12;
+    const notes = (useFlats || originalUsesFlats) ? NOTES_FLAT : NOTES_SHARP;
+    return notes[newIndex] + parsed.quality;
+  }
+
+  // All voicings in GCEA tuning. DGBE computed via +5 semitone transposition.
+  // Fret arrays: [G, C, E, A] strings
+  // 0 = open, -1 = muted, 1+ = fret number
+  const CHORDS = {
+
+    // === Major ===
+    'C':  [[0,0,0,3], [5,4,3,3]],
+    'Db': [[1,1,1,4]],
+    'D':  [[2,2,2,0], [2,2,2,5]],
+    'Eb': [[3,3,3,1], [3,3,3,6]],
+    'E':  [[4,4,4,2], [1,4,0,2]],
+    'F':  [[2,0,1,0], [5,5,5,3]],
+    'F#': [[3,1,2,1]],
+    'G':  [[0,2,3,2], [4,2,3,2]],
+    'Ab': [[1,3,4,3], [5,3,4,3]],
+    'A':  [[2,1,0,0]],
+    'Bb': [[3,2,1,1]],
+    'B':  [[4,3,2,2]],
+
+    // === Minor ===
+    'Cm':  [[0,3,3,3]],
+    'Dbm': [[1,4,4,4]],
+    'Dm':  [[2,2,1,0]],
+    'Ebm': [[3,3,2,1]],
+    'Em':  [[0,4,3,2]],
+    'Fm':  [[1,0,1,3]],
+    'F#m': [[2,1,2,0]],
+    'Gm':  [[0,2,3,1]],
+    'Abm': [[4,3,4,2]],
+    'Am':  [[2,0,0,0]],
+    'Bbm': [[3,1,1,1]],
+    'Bm':  [[4,2,2,2]],
+
+    // === Major 6 ===
+    'C6':  [[0,0,0,0], [2,4,3,3]],
+    'Db6': [[1,1,1,1], [3,5,4,4]],
+    'D6':  [[2,2,2,2]],
+    'Eb6': [[3,3,3,3]],
+    'E6':  [[4,4,4,4]],
+    'F6':  [[2,2,1,3], [5,5,5,5]],
+    'F#6': [[3,3,2,4], [6,6,6,6]],
+    'G6':  [[0,2,0,2]],
+    'Ab6': [[1,3,1,3]],
+    'A6':  [[2,4,2,4]],
+    'Bb6': [[0,2,1,1], [3,5,3,5], [0,1,1,1]],
+    'B6':  [[1,3,2,2], [1,2,2,2]],
+
+    // === Major 6/9 ===
+    'C69':  [[0,2,0,0], [2,4,3,5], [5,4,5,5]],
+    'Db69': [[1,3,1,1], [3,5,4,6], [6,5,6,6]],
+    'D69':  [[2,4,2,2], [4,6,0,0], [4,6,5,7]],
+    'Eb69': [[0,0,1,1], [0,3,1,3], [3,5,3,3]],
+    'E69':  [[1,1,2,2], [1,4,2,4], [4,6,4,4]],
+    'F69':  [[0,2,1,0], [2,2,3,3], [2,5,3,5]],
+    'F#69': [[1,3,2,1], [3,3,4,4], [3,6,4,6]],
+    'G69':  [[2,2,0,2], [2,4,3,2], [4,4,5,5]],
+    'Ab69': [[1,0,1,1], [3,3,1,3], [5,5,6,6]],
+    'A69':  [[2,1,2,2], [4,4,2,4], [4,6,5,4]],
+    'Bb69': [[0,2,1,3], [3,2,3,3], [5,5,3,5]],
+    'B69':  [[1,3,2,4], [4,3,4,4], [6,6,4,6]],
+
+    // === Minor 6 ===
+    'Cm6':  [[2,3,3,3]],
+    'Dbm6': [[3,4,4,4]],
+    'Dm6':  [[2,2,1,2]],
+    'Ebm6': [[3,3,2,3]],
+    'Em6':  [[0,1,0,2], [0,4,0,2]],
+    'Fm6':  [[1,2,1,3], [1,0,1,1]],
+    'F#m6': [[2,3,2,4], [2,1,2,2]],
+    'Gm6':  [[0,2,0,1]],
+    'Abm6': [[1,3,1,2]],
+    'Am6':  [[2,0,2,0], [2,4,2,3]],
+    'Bbm6': [[0,1,1,1]],
+    'Bm6':  [[1,2,2,2]],
+
+    // === Minor flat 6 ===
+    'Cmb6':  [[1,3,3,3]],
+    'Dbmb6': [[2,4,4,4]],
+    'Dmb6':  [[3,2,1,1], [3,5,5,5]],
+    'Ebmb6': [[4,3,2,2], [4,6,6,6]],
+    'Emb6':  [[0,0,0,3], [5,4,3,3]],
+    'Fmb6':  [[1,1,1,4], [6,5,4,4]],
+    'F#mb6': [[2,2,2,0], [2,2,2,5]],
+    'Gmb6':  [[3,3,3,1], [3,3,3,6]],
+    'Abmb6': [[4,4,4,2]],
+    'Amb6':  [[2,0,1,0]],
+    'Bbmb6': [[3,1,2,1]],
+    'Bmb6':  [[0,2,3,2]],
+
+    // === Dominant 7 ===
+    'C7':  [[0,0,0,1], [3,4,3,3]],
+    'Db7': [[1,1,1,2], [4,5,4,4]],
+    'D7':  [[2,2,2,3]],
+    'Eb7': [[3,3,3,4]],
+    'E7':  [[1,2,0,2], [4,4,4,5]],
+    'F7':  [[2,3,1,3], [5,5,5,6]],
+    'F#7': [[3,4,2,4]],
+    'G7':  [[0,2,1,2], [4,5,3,5]],
+    'Ab7': [[1,3,2,3]],
+    'A7':  [[0,1,0,0]],
+    'Bb7': [[1,2,1,1]],
+    'B7':  [[2,3,2,2]],
+
+    // === Major 7 ===
+    'Cmaj7':  [[0,0,0,2], [5,4,3,2]],
+    'Dbmaj7': [[1,1,1,3]],
+    'Dmaj7':  [[2,2,2,4]],
+    'Ebmaj7': [[3,3,3,5]],
+    'Emaj7':  [[4,4,4,6], [1,3,0,2]],
+    'Fmaj7':  [[5,5,0,0], [2,4,1,3], [5,5,5,7], [2,4,1,0]],
+    'F#maj7': [[3,5,2,4], [6,6,6,8]],
+    'Gmaj7':  [[0,2,2,2]],
+    'Abmaj7': [[1,3,3,3]],
+    'Amaj7':  [[1,1,0,0], [2,4,4,4]],
+    'Bbmaj7': [[3,2,1,0]],
+    'Bmaj7':  [[4,3,2,1]],
+
+    // === Minor 7 ===
+    'Cm7':  [[3,3,3,3], [5,7,6,6]],
+    'Dbm7': [[4,4,4,4], [1,1,0,2]],
+    'Dm7':  [[2,2,1,3], [5,5,5,5]],
+    'Ebm7': [[3,3,2,4], [6,6,6,6]],
+    'Em7':  [[0,2,0,2], [4,4,3,5]],
+    'Fm7':  [[1,3,1,3], [5,5,4,6]],
+    'F#m7': [[2,4,2,4], [6,6,5,7]],
+    'Gm7':  [[0,2,1,1], [3,5,3,5]],
+    'Abm7': [[1,3,2,2], [4,6,4,6]],
+    'Am7':  [[0,0,0,0], [2,4,3,3]],
+    'Bbm7': [[1,1,1,1], [3,5,4,4]],
+    'Bm7':  [[2,2,2,2], [4,6,5,5]],
+
+    // === Minor Major 7 ===
+    'CmMaj7':  [[0,3,3,2], [4,3,3,3]],
+    'DbmMaj7': [[1,1,0,3], [3,2,2,1]],
+    'DmMaj7':  [[2,1,1,0], [2,2,1,4]],
+    'EbmMaj7': [[3,2,2,1], [3,3,2,5]],
+    'EmMaj7':  [[0,3,3,2]],
+    'FmMaj7':  [[1,0,0,3]],
+    'F#mMaj7': [[2,1,1,0]],
+    'GmMaj7':  [[0,2,2,1]],
+    'AbmMaj7': [[1,3,3,2]],
+    'AmMaj7':  [[1,0,0,0]],
+    'BbmMaj7': [[2,1,1,1], [3,1,1,0]],
+    'BmMaj7':  [[3,2,2,2]],
+
+    // === Diminished ===
+    'Cdim':  [[0,3,2,3]],
+    'Dbdim': [[1,4,3,4]],
+    'Ddim':  [[1,1,0,1]],
+    'Ebdim': [[2,2,1,2]],
+    'Edim':  [[0,3,3,0]],
+    'Fdim':  [[1,4,4,1]],
+    'F#dim': [[2,5,5,2]],
+    'Gdim':  [[0,1,0,1]],
+    'Abdim': [[1,2,1,2]],
+    'Adim':  [[2,3,2,3]],
+    'Bbdim': [[3,4,3,4]],
+    'Bdim':  [[1,2,1,2]],
+
+    // === Augmented ===
+    'Caug':  [[1,0,0,3]],
+    'Dbaug': [[2,1,1,0]],
+    'Daug':  [[3,2,2,1]],
+    'Ebaug': [[0,3,3,2]],
+    'Eaug':  [[1,0,0,3]],
+    'Faug':  [[2,1,1,0]],
+    'F#aug': [[3,2,2,1]],
+    'Gaug':  [[0,3,3,2]],
+    'Abaug': [[1,0,0,3]],
+    'Aaug':  [[2,1,1,0]],
+    'Bbaug': [[3,2,2,1]],
+    'Baug':  [[0,3,3,2]],
+
+    // === Diminished 7 ===
+    'Cdim7':  [[2,3,2,3], [5,6,5,6]],
+    'Dbdim7': [[0,1,0,1], [3,4,3,4]],
+    'Ddim7':  [[1,2,1,2], [4,5,4,5]],
+    'Ebdim7': [[2,3,2,3], [5,6,5,6]],
+    'Edim7':  [[0,1,0,1], [3,4,3,4]],
+    'Fdim7':  [[1,2,1,2], [4,5,4,5]],
+    'F#dim7': [[2,3,2,3], [5,6,5,6]],
+    'Gdim7':  [[0,1,0,1], [3,4,3,4]],
+    'Abdim7': [[1,2,1,2], [4,5,4,5]],
+    'Adim7':  [[2,3,2,3], [5,6,5,6]],
+    'Bbdim7': [[0,1,0,1], [3,4,3,4]],
+    'Bdim7':  [[1,2,1,2], [4,5,4,5]],
+
+    // === Minor 7 flat 5 (Half Diminished) ===
+    'Cm7b5':  [[3,3,2,3], [5,6,6,6]],
+    'Dbm7b5': [[0,1,0,2], [4,4,3,4]],
+    'Dm7b5':  [[1,2,1,3], [5,5,4,5]],
+    'Ebm7b5': [[2,3,2,4], [6,6,5,6]],
+    'Em7b5':  [[0,2,0,1], [3,4,3,5]],
+    'Fm7b5':  [[1,3,1,2], [4,5,4,6]],
+    'F#m7b5': [[2,4,2,3], [5,6,5,7]],
+    'Gm7b5':  [[0,1,1,1], [3,5,3,4]],
+    'Abm7b5': [[1,2,2,2], [4,6,4,5]],
+    'Am7b5':  [[2,3,3,3], [5,7,5,6]],
+    'Bbm7b5': [[1,1,0,1], [3,4,4,4]],
+    'Bm7b5':  [[2,2,1,2], [4,5,5,5]],
+
+    // === Dominant 7 flat 9 ===
+    'C7b9':  [[0,1,0,1], [3,4,3,4]],
+    'Db7b9': [[1,2,1,2], [4,5,4,5]],
+    'D7b9':  [[2,3,2,3], [5,6,5,6]],
+    'Eb7b9': [[0,1,0,1], [3,4,3,4]],
+    'E7b9':  [[1,2,1,2], [4,5,4,5]],
+    'F7b9':  [[2,3,2,3], [5,6,5,6]],
+    'F#7b9': [[0,1,0,1], [3,4,3,4]],
+    'G7b9':  [[1,2,1,2], [4,5,4,5]],
+    'Ab7b9': [[2,3,2,3], [5,6,5,6]],
+    'A7b9':  [[0,1,0,1], [3,4,3,4]],
+    'Bb7b9': [[1,2,1,2], [4,5,4,5]],
+    'B7b9':  [[2,3,2,3], [5,6,5,6]],
+
+    // === Dominant 7 sharp 5 ===
+    'C7#5':  [[1,0,0,1], [3,4,4,3]],
+    'Db7#5': [[2,1,1,2], [4,5,5,4]],
+    'D7#5':  [[3,2,2,3]],
+    'Eb7#5': [[4,3,3,4]],
+    'E7#5':  [[1,2,0,3]],
+    'F7#5':  [[2,3,1,4]],
+    'F#7#5': [[3,4,2,5]],
+    'G7#5':  [[0,3,1,2]],
+    'Ab7#5': [[1,4,2,3]],
+    'A7#5':  [[0,1,1,0]],
+    'Bb7#5': [[1,2,2,1]],
+    'B7#5':  [[2,3,3,2]],
+
+    // === Dominant 7 sharp 9 ===
+    'C7#9':  [[0,3,0,1]],
+    'Db7#9': [[1,4,1,2]],
+    'D7#9':  [[2,5,2,3]],
+    'Eb7#9': [[3,6,3,4]],
+	'E7#9':  [[1,2,3,2]],
+    'F7#9':  [[2,3,4,3]],
+    'F#7#9': [[3,4,5,4]],
+    'G7#9':  [[4,2,1,1]],
+    'Ab7#9': [[5,3,2,2]],
+    'A7#9':  [[0,1,0,3]],
+    'Bb7#9': [[1,2,1,4]],
+    'B7#9':  [[2,3,2,5]],
+
+    // === Dominant 7 sharp 11 ===
+    'C7#11':  [[3,4,2,3]],
+    'Db7#11': [[0,1,1,2]],
+    'D7#11':  [[1,2,2,3]],
+    'Eb7#11': [[2,3,3,4]],
+    'E7#11':  [[1,2,0,1]],
+    'F7#11':  [[2,3,1,2]],
+    'F#7#11': [[3,4,2,3]],
+    'G7#11':  [[0,1,1,2]],
+    'Ab7#11': [[1,2,2,3]],
+    'A7#11':  [[2,3,3,4]],
+    'Bb7#11': [[1,2,0,1]],
+    'B7#11':  [[2,3,1,2]],
+
+    // === Dominant 7 flat 13 ===
+    'C7b13':  [[1,0,0,1], [3,4,4,3]],
+    'Db7b13': [[2,1,1,2], [4,5,5,4]],
+    'D7b13':  [[3,2,2,3]],
+    'Eb7b13': [[4,3,3,4]],
+    'E7b13':  [[1,2,0,3]],
+    'F7b13':  [[2,3,1,4]],
+    'F#7b13': [[3,4,2,5]],
+    'G7b13':  [[0,3,1,2]],
+    'Ab7b13': [[1,4,2,3]],
+    'A7b13':  [[0,1,1,0]],
+    'Bb7b13': [[1,2,2,1]],
+    'B7b13':  [[2,3,3,2]],
+
+    // === Dominant 7 Altered ===
+    'C7alt':  [[1,3,0,1]],
+    'Db7alt': [[2,4,1,2]],
+    'D7alt':  [[3,5,2,3]],
+    'Eb7alt': [[0,1,2,2]],
+    'E7alt':  [[1,2,3,3]],
+    'F7alt':  [[2,3,4,4]],
+    'F#7alt': [[3,2,0,0]],
+    'G7alt':  [[4,3,1,1]],
+    'Ab7alt': [[5,4,2,2]],
+    'A7alt':  [[0,1,1,3]],
+    'Bb7alt': [[1,2,2,4]],
+    'B7alt':  [[2,3,3,5]],
+
+    // === Dominant 9 ===
+    'C9':  [[0,2,0,1], [3,2,0,3]],
+    'Db9': [[1,3,1,2], [4,3,1,4]],
+    'D9':  [[2,4,2,3], [5,4,2,5]],
+    'Eb9': [[3,5,3,4], [6,5,3,6]],
+    'E9':  [[1,2,2,2], [4,6,4,5]],
+    'F9':  [[2,3,3,3], [5,7,5,6]],
+    'F#9': [[1,1,0,1], [3,4,4,4]],
+    'G9':  [[2,2,1,2], [4,5,5,5], [4,5,3,0]],
+    'Ab9': [[3,3,2,3], [5,6,6,6]],
+    'A9':  [[0,1,0,2], [4,4,3,4]],
+    'Bb9': [[1,2,1,3], [5,5,4,5]],
+    'B9':  [[2,3,2,4], [6,6,5,6]],
+
+    // === Dominant 13 ===
+    'C13':  [[2,2,0,1], [3,4,5,5]],
+    'Db13': [[3,3,1,2], [4,5,6,6]],
+    'D13':  [[2,0,2,2], [4,4,2,3]],
+    'Eb13': [[0,1,1,3], [3,1,3,3] ],
+    'E13':  [[1,2,2,4], [4,2,4,4]],
+    'F13':  [[2,3,3,5], [5,3,5,5]],
+    'F#13': [[1,3,0,1], [3,4,4,6]],
+    'G13':  [[4,5,0,0], [4,5,5,7]],
+    'Ab13': [[5,6,6,8]],
+    'A13':  [[0,1,2,2]],
+    'Bb13': [[1,2,3,3]],
+    'B13':  [[2,3,4,4]],
+
+    // === Major 9 ===
+    'Cmaj9':  [[0,2,0,2], [4,4,3,5]],
+    'Dbmaj9': [[1,3,1,3], [5,5,4,6]],
+    'Dmaj9':  [[2,4,2,4], [6,6,5,7]],
+    'Ebmaj9': [[0,2,1,1], [3,5,3,5]],
+    'Emaj9':  [[1,3,2,2], [4,6,4,6]],
+    'Fmaj9':  [[0,0,0,0], [2,4,3,3]],
+    'F#maj9': [[1,1,1,1], [3,5,4,4]],
+    'Gmaj9':  [[2,2,2,2], [4,6,5,5]],
+    'Abmaj9': [[3,3,3,3], [5,7,6,6]],
+    'Amaj9':  [[4,4,4,4], [1,1,0,2]],
+    'Bbmaj9': [[2,2,1,3], [5,5,5,5]],
+    'Bmaj9':  [[3,3,2,4], [6,6,6,6]],
+
+    // === Major 13 ===
+    'Cmaj13':  [[2,2,0,2], [4,4,5,5]],
+    'Dbmaj13': [[3,3,1,3], [5,5,6,6]],
+    'Dmaj13':  [[4,4,2,4], [6,6,7,7], [4,6,0,1]],
+    'Ebmaj13': [[0,2,1,3], [5,5,3,5]],
+    'Emaj13':  [[1,3,2,4], [6,6,4,6]],
+    'Fmaj13':  [[0,2,0,0], [2,4,3,5], [7,7,5,7]],
+    'F#maj13': [[1,3,1,1], [3,5,4,6]],
+    'Gmaj13':  [[2,4,2,2], [4,6,5,7]],
+    'Abmaj13': [[0,0,1,1], [3,5,3,3]],
+    'Amaj13':  [[1,1,2,2], [4,6,4,4]],
+    'Bbmaj13': [[2,2,3,3], [5,7,5,5]],
+    'Bmaj13':  [[3,3,4,4]],
+
+    // === Minor 9 ===
+    'Cm9':  [[5,3,6,5], [3,3,3,5]],
+    'Dbm9': [[6,4,7,6], [4,4,4,6]],
+    'Dm9':  [[7,5,8,7], [5,5,0,0]],
+    'Ebm9': [[8,6,9,8], [3,5,2,4]],
+    'Em9':  [[0,2,2,2]],
+    'Fm9':  [[1,3,3,3]],
+    'F#m9': [[2,4,4,4]],
+    'Gm9':  [[3,2,1,0]],
+    'Abm9': [[4,3,2,1]],
+    'Am9':  [[2,0,3,2], [0,0,0,2]],
+    'Bbm9': [[3,1,4,3], [1,1,1,3]],
+    'Bm9':  [[4,2,5,4], [2,2,2,4]],
+
+    // === Minor 11 ===
+    'Cm11':  [[3,3,1,3]],
+    'Dbm11': [[4,4,2,4]],
+    'Dm11':  [[0,2,1,3], [0,0,1,0]],
+    'Ebm11': [[1,3,2,4], [1,1,2,1]],
+    'Em11':  [[0,2,0,0], [2,2,3,2]],
+    'Fm11':  [[1,3,1,1], [3,3,4,3]],
+    'F#m11': [[4,4,2,0], [4,4,5,4]],
+    'Gm11':  [[0,0,1,1]],
+    'Abm11': [[1,1,2,2]],
+    'Am11':  [[2,2,3,3]],
+    'Bbm11': [[3,3,4,4]],
+    'Bm11':  [[4,2,0,0]],
+
+    // === Suspended 4 ===
+    'Csus4':  [[0,0,1,3], [5,5,3,3]],
+    'Dbsus4': [[1,1,2,4]],
+    'Dsus4':  [[2,2,3,0], [2,2,3,5]],
+    'Ebsus4': [[3,3,4,1], [3,3,4,6]],
+    'Esus4':  [[2,4,0,2], [4,4,5,2]],
+    'Fsus4':  [[3,0,1,1], [5,5,6,3]],
+    'F#sus4': [[4,1,2,2]],
+    'Gsus4':  [[0,2,3,3], [5,2,3,3]],
+    'Absus4': [[1,3,4,4], [6,3,4,4]],
+    'Asus4':  [[2,2,0,0]],
+    'Bbsus4': [[3,3,1,1]],
+    'Bsus4':  [[4,4,2,2]],
+
+    // === Dominant 7 Sus ===
+    'C7sus':  [[0,0,1,1]],
+    'Db7sus': [[1,1,2,2]],
+    'D7sus':  [[2,2,3,3]],
+    'Eb7sus': [[3,3,4,4]],
+    'E7sus':  [[4,2,0,0], [4,4,5,5]],
+    'F7sus':  [[3,3,1,3]],
+    'F#7sus': [[4,4,2,4]],
+    'G7sus':  [[0,2,1,3]],
+    'Ab7sus': [[1,3,2,4]],
+    'A7sus':  [[0,2,0,0]],
+    'Bb7sus': [[1,3,1,1]],
+    'B7sus':  [[4,4,2,0], [2,4,2,2]],
+
+    // === Suspended 2 ===
+    'Csus2':  [[0,2,3,3]],
+    'Dbsus2': [[1,3,4,4]],
+    'Dsus2':  [[2,2,0,0]],
+    'Ebsus2': [[3,3,1,1]],
+    'Esus2':  [[0,4,2,2]],
+    'Fsus2':  [[0,0,1,3]],
+    'F#sus2': [[1,1,2,4]],
+    'Gsus2':  [[0,2,3,0]],
+    'Absus2': [[1,3,4,1]],
+    'Asus2':  [[4,4,0,0]],
+    'Bbsus2': [[3,0,1,1]],
+    'Bsus2':  [[4,1,2,2]],
+
+    // === Add 9 ===
+    'Cadd9':  [[0,2,0,3]],
+    'Dbadd9': [[1,3,1,4]],
+    'Dadd9':  [[2,4,2,5]],
+    'Ebadd9': [[3,5,3,6]],
+    'Eadd9':  [[1,4,0,2]],
+    'Fadd9':  [[0,0,1,0]],
+    'F#add9': [[1,1,2,1]],
+    'Gadd9':  [[2,2,3,2]],
+    'Abadd9': [[3,3,4,3]],
+    'Aadd9':  [[2,1,0,2]],
+    'Bbadd9': [[3,2,1,3]],
+    'Badd9':  [[4,3,2,4]],
+
+    // === Dominant 9 Sus 4 ===
+    'C9sus4':  [[0,2,1,1], [3,5,3,5]],
+    'Db9sus4': [[1,3,2,2], [4,6,4,6]],
+    'D9sus4':  [[0,0,0,0], [2,4,3,3]],
+    'Eb9sus4': [[1,1,1,1], [3,5,4,4]],
+    'E9sus4':  [[2,2,2,2], [4,6,5,5]],
+    'F9sus4':  [[3,3,3,3], [5,7,6,6]],
+    'F#9sus4': [[1,1,0,2], [4,4,4,4]],
+    'G9sus4':  [[2,2,1,3], [5,5,5,5]],
+    'Ab9sus4': [[3,3,2,4], [6,6,6,6]],
+    'A9sus4':  [[0,2,0,2], [4,4,3,5]],
+    'Bb9sus4': [[1,3,1,3], [5,5,4,6]],
+    'B9sus4':  [[2,4,2,4], [6,6,5,7]],
+
+    // === Minor add 9 ===
+    'Cm+9':  [[5,3,3,5]],
+    'Dbm+9': [[6,4,4,6]],
+    'Dm+9':  [[7,5,5,7]],
+    'Ebm+9': [[8,6,6,8]],
+    'Em+9':  [[0,4,2,2]],
+    'Fm+9':  [[1,5,3,3]],
+    'F#m+9': [[1,1,2,0]],
+    'Gm+9':  [[2,2,3,1]],
+    'Abm+9': [[3,3,4,2]],
+    'Am+9':  [[2,0,0,2]],
+    'Bbm+9': [[3,1,1,3]],
+    'Bm+9':  [[4,2,2,4]]
+  };
+
+  function resolveKey(parsed, tuning) {
+    let rootIndex = parsed.rootIndex;
+    if (tuning === 'DGBE') rootIndex = (rootIndex + 5) % 12;
+    return CHORD_KEYS[rootIndex] + parsed.quality;
+  }
+
+  function getChordFrets(name, tuning, voicingIndex) {
+    const parsed = parseChord(name);
+    if (!parsed) return null;
+    const key = resolveKey(parsed, tuning);
+    const voicings = CHORDS[key];
+    if (!voicings) {
+      const slashIdx = key.indexOf('/');
+      if (slashIdx > 0) {
+        const base = CHORDS[key.substring(0, slashIdx)];
+        if (base) return base[(voicingIndex || 0) % base.length];
+      }
+      return null;
+    }
+    return voicings[(voicingIndex || 0) % voicings.length];
+  }
+
+  function getAllVoicings(name, tuning) {
+    const parsed = parseChord(name);
+    if (!parsed) return null;
+    const key = resolveKey(parsed, tuning);
+    return CHORDS[key] || null;
+  }
+
+  function getVoicingCount(name, tuning) {
+    const voicings = getAllVoicings(name, tuning);
+    return voicings ? voicings.length : 0;
+  }
+
+  function getAllChordNames() {
+    return Object.keys(CHORDS);
+  }
+
+  return {
+    NOTES_SHARP, NOTES_FLAT, TUNING_LABELS,
+    parseChord, transposeChord, getChordFrets,
+    getAllVoicings, getVoicingCount, getAllChordNames
+  };
+})();
+
+</script>
+<script>
+const ChordRenderer = (() => {
+  const DIAGRAM_W = 70;
+  const DIAGRAM_H = 80;
+  const FRETS_SHOWN = 4;
+  const NUM_STRINGS = 4;
+  const TOP_MARGIN = 16;
+  const BOTTOM_MARGIN = 6;
+  const SIDE_MARGIN = 18;
+  const FRET_AREA_TOP = TOP_MARGIN;
+  const FRET_AREA_H = DIAGRAM_H - TOP_MARGIN - BOTTOM_MARGIN;
+  const STRING_SPACING = (DIAGRAM_W - 2 * SIDE_MARGIN) / (NUM_STRINGS - 1);
+  const FRET_SPACING = FRET_AREA_H / FRETS_SHOWN;
+  const DOT_R = 4;
+
+  function render(svgEl, chordName, frets, tuning, options) {
+    const showLabel = !(options && options.hideLabel);
+    svgEl.setAttribute('viewBox', `0 0 ${DIAGRAM_W} ${DIAGRAM_H}`);
+    svgEl.setAttribute('width', DIAGRAM_W);
+    svgEl.setAttribute('height', DIAGRAM_H);
+    svgEl.innerHTML = '';
+
+    if (!frets) {
+      const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      txt.setAttribute('x', DIAGRAM_W / 2);
+      txt.setAttribute('y', DIAGRAM_H / 2);
+      txt.setAttribute('text-anchor', 'middle');
+      txt.setAttribute('font-size', '8');
+      txt.setAttribute('fill', '#999');
+      txt.textContent = chordName;
+      svgEl.appendChild(txt);
+      return;
+    }
+
+    const minFret = Math.min(...frets.filter(f => f > 0));
+    const maxFret = Math.max(...frets.filter(f => f > 0));
+    let startFret = 1;
+    if (maxFret > FRETS_SHOWN) {
+      startFret = minFret;
+    }
+
+    const stringLabels = ChordLibrary.TUNING_LABELS[tuning] || ChordLibrary.TUNING_LABELS.GCEA;
+
+    for (let i = 0; i <= FRETS_SHOWN; i++) {
+      const y = FRET_AREA_TOP + i * FRET_SPACING;
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('x1', SIDE_MARGIN);
+      line.setAttribute('x2', SIDE_MARGIN + (NUM_STRINGS - 1) * STRING_SPACING);
+      line.setAttribute('y1', y);
+      line.setAttribute('y2', y);
+      if (i === 0 && startFret === 1) {
+        line.setAttribute('stroke', '#222');
+        line.setAttribute('stroke-width', '4');
+      } else {
+        line.setAttribute('stroke', '#999');
+        line.setAttribute('stroke-width', '0.8');
+      }
+      svgEl.appendChild(line);
+    }
+
+    for (let i = 0; i < NUM_STRINGS; i++) {
+      const x = SIDE_MARGIN + i * STRING_SPACING;
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('x1', x);
+      line.setAttribute('x2', x);
+      line.setAttribute('y1', FRET_AREA_TOP);
+      line.setAttribute('y2', FRET_AREA_TOP + FRETS_SHOWN * FRET_SPACING);
+      line.setAttribute('stroke', '#666');
+      line.setAttribute('stroke-width', '1');
+      svgEl.appendChild(line);
+    }
+
+    if (startFret > 1) {
+      const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      t.setAttribute('x', SIDE_MARGIN - 6);
+      t.setAttribute('y', FRET_AREA_TOP + FRET_SPACING / 2 + 4);
+      t.setAttribute('text-anchor', 'end');
+      t.setAttribute('font-size', '11');
+      t.setAttribute('font-weight', 'bold');
+      t.setAttribute('fill', '#444');
+      t.textContent = startFret;
+      svgEl.appendChild(t);
+    }
+
+    for (let i = 0; i < NUM_STRINGS; i++) {
+      const x = SIDE_MARGIN + i * STRING_SPACING;
+      const f = frets[i];
+
+      if (f === 0) {
+        // open string — no marker
+      } else if (f === -1) {
+        const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        t.setAttribute('x', x);
+        t.setAttribute('y', FRET_AREA_TOP - 3);
+        t.setAttribute('text-anchor', 'middle');
+        t.setAttribute('font-size', '8');
+        t.setAttribute('fill', '#333');
+        t.textContent = '×';
+        svgEl.appendChild(t);
+      } else {
+        const relFret = f - startFret;
+        const cy = FRET_AREA_TOP + relFret * FRET_SPACING + FRET_SPACING / 2;
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('cx', x);
+        circle.setAttribute('cy', cy);
+        circle.setAttribute('r', DOT_R);
+        circle.setAttribute('fill', '#333');
+        svgEl.appendChild(circle);
+      }
+    }
+
+    if (showLabel) {
+      const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      label.setAttribute('x', DIAGRAM_W / 2);
+      label.setAttribute('y', 9);
+      label.setAttribute('text-anchor', 'middle');
+      label.setAttribute('font-size', '11');
+      label.setAttribute('font-weight', 'bold');
+      label.setAttribute('fill', '#222');
+      label.textContent = chordName;
+      svgEl.appendChild(label);
+    }
+  }
+
+  function createDiagram(chordName, tuning) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.classList.add('chord-diagram');
+    const frets = ChordLibrary.getChordFrets(chordName, tuning);
+    render(svg, chordName, frets, tuning);
+    return svg;
+  }
+
+  function exportPNG(svgEl, fileName) {
+    const serializer = new XMLSerializer();
+    const svgStr = serializer.serializeToString(svgEl);
+    const svgBlob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(svgBlob);
+
+    const img = new Image();
+    img.onload = () => {
+      const scale = 5;
+      const canvas = document.createElement('canvas');
+      canvas.width = DIAGRAM_W * scale;
+      canvas.height = DIAGRAM_H * scale;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+      const link = document.createElement('a');
+      link.download = fileName || 'chord.png';
+      link.href = canvas.toDataURL('image/png');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    };
+    img.src = url;
+  }
+
+  return { render, createDiagram, exportPNG };
+})();
+
+</script>
+<script>
+(() => {
+  const input = document.getElementById('chordInput');
+  const dropdown = document.getElementById('dropdown');
+  const resultArea = document.getElementById('resultArea');
+  const tuningSelect = document.getElementById('tuningSelect');
+
+  let allChordNames = [];
+  let filteredChords = [];
+  let activeIndex = -1;
+  let currentVoicingIndex = 0;
+  let currentChordName = '';
+
+  function getTuning() { return tuningSelect.value; }
+
+  function buildChordList() {
+    const tuning = getTuning();
+    const seen = new Set();
+    allChordNames = [];
+    const { NOTES_SHARP, NOTES_FLAT, getChordFrets } = ChordLibrary;
+    const qualities = ['', 'm', '7', 'm7', 'maj7', 'dim', 'aug', 'dim7', '6', 'm6', 'm7b5',
+      '7b9', '7#5', '7#9', '7#11', '7b13', '7alt', '9', 'maj9', 'm9', 'm11', 'm+9', '7sus'];
+    for (const q of qualities) {
+      for (let i = 0; i < 12; i++) {
+        const sharpName = NOTES_SHARP[i] + q;
+        const flatName = NOTES_FLAT[i] + q;
+        if (!seen.has(sharpName)) {
+          const frets = getChordFrets(sharpName, tuning);
+          if (frets) {
+            allChordNames.push({ name: sharpName, frets });
+            seen.add(sharpName);
+          }
+        }
+        if (flatName !== sharpName && !seen.has(flatName)) {
+          const frets = getChordFrets(flatName, tuning);
+          if (frets) {
+            allChordNames.push({ name: flatName, frets });
+            seen.add(flatName);
+          }
+        }
+      }
+    }
+  }
+
+  function formatFrets(frets) {
+    return frets.map(f => f === -1 ? 'x' : f).join(' ');
+  }
+
+  function filterChords(query) {
+    if (!query) return [];
+    const q = query.toLowerCase();
+    return allChordNames.filter(c => c.name.toLowerCase().startsWith(q));
+  }
+
+  function renderDropdown() {
+    dropdown.innerHTML = '';
+    if (filteredChords.length === 0) {
+      dropdown.classList.remove('open');
+      return;
+    }
+    dropdown.classList.add('open');
+    filteredChords.forEach((chord, idx) => {
+      const div = document.createElement('div');
+      div.className = 'dropdown-item' + (idx === activeIndex ? ' active' : '');
+      div.innerHTML = `<span class="chord-name">${chord.name}</span><span class="chord-frets">${formatFrets(chord.frets)}</span>`;
+      div.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        selectChord(chord.name);
+      });
+      dropdown.appendChild(div);
+    });
+  }
+
+  function selectChord(name) {
+    input.value = name;
+    dropdown.classList.remove('open');
+    activeIndex = -1;
+    showChord(name);
+  }
+
+  function showChord(name) {
+    resultArea.innerHTML = '';
+    const tuning = getTuning();
+    if (name !== currentChordName) {
+      currentVoicingIndex = 0;
+      currentChordName = name;
+    }
+    const frets = ChordLibrary.getChordFrets(name, tuning, currentVoicingIndex);
+    if (frets) {
+      renderFoundChord(name, frets, tuning);
+    } else {
+      renderNotFound(name, tuning);
+    }
+  }
+
+  function renderFoundChord(name, frets, tuning) {
+    const wrap = document.createElement('div');
+    wrap.className = 'chord-display';
+
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    ChordRenderer.render(svg, name, frets, tuning);
+    wrap.appendChild(svg);
+
+    const label = document.createElement('div');
+    label.className = 'chord-fret-label';
+    label.textContent = 'Frets: ' + formatFrets(frets);
+    wrap.appendChild(label);
+
+    const parsed = ChordLibrary.parseChord(name);
+    if (parsed) {
+      const sharpName = ChordLibrary.NOTES_SHARP[parsed.rootIndex] + parsed.quality;
+      const flatName = ChordLibrary.NOTES_FLAT[parsed.rootIndex] + parsed.quality;
+      const alt = name === sharpName ? flatName : sharpName;
+      if (alt !== name) {
+        const en = document.createElement('div');
+        en.className = 'enharmonic-note';
+        en.textContent = 'Also: ' + alt;
+        wrap.appendChild(en);
+      }
+    }
+
+    const count = ChordLibrary.getVoicingCount(name, tuning);
+    const controls = document.createElement('div');
+    controls.className = 'voicing-controls';
+
+    if (count > 1) {
+      const voicingLabel = document.createElement('span');
+      voicingLabel.className = 'voicing-label';
+      voicingLabel.textContent = `Voicing ${currentVoicingIndex + 1} of ${count}`;
+      controls.appendChild(voicingLabel);
+
+      const nextBtn = document.createElement('button');
+      nextBtn.className = 'voicing-btn';
+      nextBtn.textContent = 'Next Shape';
+      nextBtn.addEventListener('click', () => {
+        currentVoicingIndex = (currentVoicingIndex + 1) % count;
+        showChord(name);
+      });
+      controls.appendChild(nextBtn);
+    }
+
+    const exportBtn = document.createElement('button');
+    exportBtn.className = 'export-btn';
+    exportBtn.textContent = 'Save PNG';
+    exportBtn.addEventListener('click', () => {
+      ChordRenderer.exportPNG(svg, name + '.png');
+    });
+    controls.appendChild(exportBtn);
+
+    wrap.appendChild(controls);
+    resultArea.appendChild(wrap);
+  }
+
+  function renderNotFound(name, tuning) {
+    const wrap = document.createElement('div');
+    wrap.className = 'not-found';
+
+    const h3 = document.createElement('h3');
+    h3.textContent = `"${name}" not found in chord library`;
+    wrap.appendChild(h3);
+
+    const p = document.createElement('p');
+    p.textContent = 'Enter fret numbers for each string to render a custom chord diagram. Use -1 for muted strings.';
+    wrap.appendChild(p);
+
+    const strings = (ChordLibrary.TUNING_LABELS[tuning] || ChordLibrary.TUNING_LABELS.GCEA);
+
+    const fretInputs = document.createElement('div');
+    fretInputs.className = 'fret-inputs';
+    const inputs = [];
+    strings.forEach((s, i) => {
+      const group = document.createElement('div');
+      group.className = 'fret-input-group';
+      const lbl = document.createElement('label');
+      lbl.textContent = s;
+      const inp = document.createElement('input');
+      inp.type = 'text';
+      inp.inputMode = 'numeric';
+      inp.maxLength = 2;
+      inp.placeholder = '0';
+      inp.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') renderCustom();
+        if (e.key === 'Tab' && !e.shiftKey && i === strings.length - 1) {
+          e.preventDefault();
+          renderCustom();
+        }
+      });
+      inputs.push(inp);
+      group.appendChild(lbl);
+      group.appendChild(inp);
+      fretInputs.appendChild(group);
+    });
+    wrap.appendChild(fretInputs);
+
+    const btn = document.createElement('button');
+    btn.className = 'render-btn';
+    btn.textContent = 'Render Chord';
+    btn.addEventListener('click', renderCustom);
+    wrap.appendChild(btn);
+
+    const hint = document.createElement('div');
+    hint.className = 'hint';
+    hint.textContent = '0 = open, -1 = muted, 1+ = fret number';
+    wrap.appendChild(hint);
+
+    const customResult = document.createElement('div');
+    customResult.id = 'customResult';
+    customResult.style.marginTop = '16px';
+    wrap.appendChild(customResult);
+
+    resultArea.appendChild(wrap);
+
+    function renderCustom() {
+      const frets = inputs.map(inp => {
+        const v = parseInt(inp.value, 10);
+        return isNaN(v) ? 0 : v;
+      });
+      const container = document.getElementById('customResult');
+      container.innerHTML = '';
+
+      const display = document.createElement('div');
+      display.style.display = 'flex';
+      display.style.flexDirection = 'column';
+      display.style.alignItems = 'center';
+
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.style.transform = 'scale(2)';
+      svg.style.transformOrigin = 'top center';
+      svg.style.marginBottom = '80px';
+      ChordRenderer.render(svg, name || '?', frets, tuning);
+      display.appendChild(svg);
+
+      const label = document.createElement('div');
+      label.className = 'chord-fret-label';
+      label.textContent = 'Frets: ' + formatFrets(frets);
+      display.appendChild(label);
+
+      container.appendChild(display);
+    }
+  }
+
+  function onInput() {
+    const val = input.value.trim();
+    activeIndex = -1;
+    if (!val) {
+      filteredChords = [];
+      renderDropdown();
+      resultArea.innerHTML = '';
+      return;
+    }
+    filteredChords = filterChords(val);
+    renderDropdown();
+
+    const exact = allChordNames.find(c => c.name.toLowerCase() === val.toLowerCase());
+    if (exact) {
+      showChord(exact.name);
+    } else if (filteredChords.length === 0) {
+      const parsed = ChordLibrary.parseChord(val);
+      if (parsed) {
+        showChord(val);
+      } else {
+        resultArea.innerHTML = '';
+      }
+    } else {
+      resultArea.innerHTML = '';
+    }
+  }
+
+  function onKeydown(e) {
+    if (!dropdown.classList.contains('open')) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      activeIndex = Math.min(activeIndex + 1, filteredChords.length - 1);
+      renderDropdown();
+      scrollActiveIntoView();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      activeIndex = Math.max(activeIndex - 1, 0);
+      renderDropdown();
+      scrollActiveIntoView();
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (activeIndex >= 0 && filteredChords[activeIndex]) {
+        selectChord(filteredChords[activeIndex].name);
+      } else if (input.value.trim()) {
+        dropdown.classList.remove('open');
+        showChord(input.value.trim());
+      }
+    } else if (e.key === 'Escape') {
+      dropdown.classList.remove('open');
+      activeIndex = -1;
+    }
+  }
+
+  function scrollActiveIntoView() {
+    const active = dropdown.querySelector('.dropdown-item.active');
+    if (active) active.scrollIntoView({ block: 'nearest' });
+  }
+
+  input.addEventListener('input', onInput);
+  input.addEventListener('keydown', onKeydown);
+  input.addEventListener('focus', () => { if (filteredChords.length > 0) dropdown.classList.add('open'); });
+  input.addEventListener('blur', () => { setTimeout(() => dropdown.classList.remove('open'), 150); });
+  tuningSelect.addEventListener('change', () => {
+    buildChordList();
+    if (input.value.trim()) onInput();
+  });
+
+  buildChordList();
+})();
+</script>
+</body>
+</html>
