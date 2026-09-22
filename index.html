@@ -5918,9 +5918,7 @@ function renderSong() {
   currentSongRiffs = song.riffs || {};
   buildRiffColorMap(currentSongRiffs);
   playbackBeatsPerMeasure = song.time ? song.time.beats : 4;
-  if (song.rhythm && ['swing', 'bossa', 'funk'].includes(song.rhythm)) {
-    setRhythm(song.rhythm);
-  }
+  setRhythm(song.rhythm && ['swing', 'bossa', 'funk'].includes(song.rhythm) ? song.rhythm : 'swing');
   const semitones = getTranspose();
   const useFlats = semitones < 0;
   const output = document.getElementById('output');
