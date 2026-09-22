@@ -4390,6 +4390,7 @@ function openRiffPopup(riffName) {
   document.querySelector('.riff-popup-tempo').style.display = '';
   document.getElementById('riffPopupPlayBtn').style.display = '';
   document.getElementById('riffPopupStopBtn').style.display = 'none';
+  document.getElementById('riffPopupLoop').parentElement.style.display = '';
   const popup = document.getElementById('riffPopup');
   popup.classList.remove('playback-mode');
   popup.classList.add('visible');
@@ -4515,6 +4516,7 @@ function startRiffForChord(riffName, chordBeats, forceRestart) {
     document.querySelector('.riff-popup-tempo').style.display = 'none';
     document.getElementById('riffPopupPlayBtn').style.display = 'none';
     document.getElementById('riffPopupStopBtn').style.display = 'none';
+    document.getElementById('riffPopupLoop').parentElement.style.display = 'none';
     const popup = document.getElementById('riffPopup');
     popup.classList.add('playback-mode');
     popup.classList.add('visible');
@@ -6620,6 +6622,24 @@ function renderGrid(song, semitones, useFlats, output) {
       }
     }
 
+    let spanRiff = null, spanRemaining = 0;
+    for (const ch of allChords) {
+      if (ch.riffName && song.riffs && song.riffs[ch.riffName]) {
+        const riffBeats = song.riffs[ch.riffName].beats;
+        if (riffBeats > ch.beats) {
+          spanRiff = ch.riffName;
+          spanRemaining = riffBeats - ch.beats;
+        } else {
+          spanRiff = null;
+          spanRemaining = 0;
+        }
+      } else if (spanRiff && spanRemaining > 0) {
+        ch._spanRiffName = spanRiff;
+        spanRemaining -= ch.beats;
+        if (spanRemaining <= 0) { spanRiff = null; spanRemaining = 0; }
+      }
+    }
+
     let row = document.createElement('div');
     row.className = 'ireal-row';
     let lyricRow = showLyrics ? document.createElement('div') : null;
@@ -6705,9 +6725,9 @@ function renderGrid(song, semitones, useFlats, output) {
         if (take < 1) cell.classList.add('half-beat');
         cell.style.flex = take;
         if (ch.voicingIndex !== (ch.textFileVI || 0)) cell.classList.add('voicing-overridden');
-        const isRiffCell = ch.riffName && song.riffs && song.riffs[ch.riffName];
-        if (isRiffCell) {
-          const rc = getRiffColor(ch.riffName);
+        const riffColorName = (ch.riffName && song.riffs && song.riffs[ch.riffName]) ? ch.riffName : ch._spanRiffName;
+        if (riffColorName) {
+          const rc = getRiffColor(riffColorName);
           cell.classList.add('riff-span');
           cell.style.setProperty('--riff-bg', 'linear-gradient(180deg, ' + rc.light + '0.10) 0%, ' + rc.light + '0.03) 100%)');
           cell.style.setProperty('--riff-border', rc.border);
@@ -6727,7 +6747,7 @@ function renderGrid(song, semitones, useFlats, output) {
         } else {
           cell.textContent = ch.name;
         }
-        if (isRiffCell && remaining === ch.beats) {
+        if (ch.riffName && song.riffs && song.riffs[ch.riffName] && remaining === ch.beats) {
           const rc = getRiffColor(ch.riffName);
           const riffIcon = document.createElement('span');
           riffIcon.className = 'riff-indicator';
