@@ -4381,6 +4381,8 @@ function preRenderSongRiffs() {
   return Promise.all(promises);
 }
 
+let activeRiffStartTime = 0;
+
 function startRiffForChord(riffName, chordBeats) {
   if (activeRiffName === riffName && activeRiffSource) return;
   stopActiveRiff();
@@ -4393,6 +4395,7 @@ function startRiffForChord(riffName, chordBeats) {
   activeRiffData = riff;
   activeRiffBeatInRiff = 0;
   activeRiffJustStarted = false;
+  activeRiffStartTime = getAudioCtx().currentTime;
   triggerRiffBuffer();
   const showRiffs = localStorage.getItem('uke-show-riffs') !== 'false';
   if (showRiffs) {
@@ -4435,26 +4438,42 @@ function tickActiveRiff() {
   activeRiffBeatInRiff++;
   if (activeRiffBeatInRiff >= activeRiffData.beats) {
     activeRiffBeatInRiff = 0;
+    activeRiffStartTime = getAudioCtx().currentTime;
     triggerRiffBuffer();
   }
   updateRiffVisuals();
 }
 
+let riffPlaybackAnimId = null;
+
 function updateRiffVisuals() {
   if (!activeRiffData || !activeRiffFlat) return;
-  const beat = activeRiffBeatInRiff;
-  const dots = document.querySelectorAll('#riffPopupBeats .riff-beat-dot');
-  dots.forEach((d, i) => d.classList.toggle('active', i === Math.floor(beat)));
-  riffClearDots();
-  for (const token of activeRiffFlat) {
-    const tStart = token.actualStart, tEnd = tStart + token.actualDuration;
-    if (beat >= tStart && beat < tEnd && token.type === 'note' && token.notes) {
-      for (const n of token.notes) riffActivateDot(n.string, n.fret);
+  if (riffPlaybackAnimId) { cancelAnimationFrame(riffPlaybackAnimId); riffPlaybackAnimId = null; }
+
+  function renderFrame() {
+    if (!activeRiffData || !activeRiffFlat) return;
+    const secPerBeat = 60 / playbackBPM;
+    const riffDur = activeRiffData.beats * secPerBeat;
+    const elapsed = getAudioCtx().currentTime - activeRiffStartTime;
+    const pos = ((elapsed % riffDur) + riffDur) % riffDur;
+    const beat = pos / secPerBeat;
+
+    const dots = document.querySelectorAll('#riffPopupBeats .riff-beat-dot');
+    dots.forEach((d, i) => d.classList.toggle('active', i === Math.floor(beat)));
+    riffClearDots();
+    for (const token of activeRiffFlat) {
+      const tStart = token.actualStart, tEnd = tStart + token.actualDuration;
+      if (beat >= tStart && beat < tEnd && token.type === 'note' && token.notes) {
+        for (const n of token.notes) riffActivateDot(n.string, n.fret);
+      }
     }
+    riffPlaybackAnimId = requestAnimationFrame(renderFrame);
   }
+  riffPlaybackAnimId = requestAnimationFrame(renderFrame);
 }
 
 function stopActiveRiff() {
+  if (riffPlaybackAnimId) { cancelAnimationFrame(riffPlaybackAnimId); riffPlaybackAnimId = null; }
   if (activeRiffSource) { try { activeRiffSource.stop(); } catch(e) {} activeRiffSource = null; }
   activeRiffName = null; activeRiffFlat = null; activeRiffData = null;
   activeRiffBeatInRiff = 0;
