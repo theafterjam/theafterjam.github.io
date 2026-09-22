@@ -349,18 +349,38 @@
 
   /* --- Riff Indicator --- */
   .riff-indicator {
-    display: inline-block;
-    font-size: 0.7em;
-    color: #e67e22;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65em;
+    color: #fff;
+    background: #e67e22;
+    border-radius: 3px;
+    padding: 1px 4px;
     cursor: pointer;
-    margin-left: 2px;
-    vertical-align: super;
-    line-height: 1;
+    margin-left: 4px;
+    vertical-align: middle;
+    line-height: 1.2;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
   }
-  .riff-indicator:hover { color: #d35400; }
+  .riff-indicator:hover { background: #d35400; }
   .riff-indicator.disabled {
-    color: #bbb;
+    background: #ccc;
+    color: #999;
     cursor: default;
+  }
+  .chord-pair .riff-indicator { vertical-align: baseline; position: relative; top: -0.15em; }
+  .ireal-cell .riff-indicator { margin-left: 0.3em; font-size: 0.6em; }
+  .ireal-grid.chart-mode .ireal-cell .riff-indicator { margin-left: 0; margin-top: -0.3em; font-size: 0.55em; }
+  .ireal-cell.riff-span {
+    background: var(--riff-bg);
+    border-top: 2px solid var(--riff-border);
+  }
+  .ireal-cell.riff-span.chord-playing {
+    background: rgba(52, 152, 219, 0.25) !important;
+    border-top-color: #3498db !important;
   }
 
   /* --- Riff Popup --- */
@@ -387,6 +407,10 @@
     overflow: hidden;
   }
   .riff-popup.visible { display: block; }
+  .riff-popup.playback-mode {
+    top: auto; left: auto; right: 16px; bottom: 70px;
+    transform: none;
+  }
   .riff-popup-header {
     display: flex;
     align-items: center;
@@ -435,6 +459,26 @@
   .riff-popup-controls button.stop { background: #a04040; border-color: #8a3030; }
   .riff-popup-controls button.stop:hover { background: #8a3030; }
   .riff-popup-controls label { cursor: pointer; }
+  .riff-popup-tempo {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    font-size: 0.85em;
+    font-weight: 600;
+  }
+  .riff-popup-tempo button {
+    padding: 2px 6px;
+    border: 1px solid #c9b99a;
+    border-radius: 3px;
+    background: #f5f3ee;
+    color: #333;
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .riff-popup-tempo button:hover { background: #e8e4db; }
+  .riff-popup-tempo span { min-width: 2.2em; text-align: center; }
   .riff-popup-beats {
     display: flex;
     gap: 5px;
@@ -449,21 +493,16 @@
   }
   .riff-beat-dot.active { background: #e67e22; border-color: #c0580a; }
 
-  /* Riff fretboard in popup */
-  .riff-fb-string { stroke: #555; stroke-width: 1; }
-  .riff-fb-fret { stroke: #999; stroke-width: 1; }
-  .riff-fb-nut { stroke: #333; stroke-width: 3; }
-  .riff-fb-fret-num { font-size: 10px; fill: #999; text-anchor: middle; }
-  .riff-fb-marker { fill: #ddd; }
+  /* Riff fretboard in popup — matches ChordRenderer style */
   .riff-fb-dot {
     fill: transparent;
     stroke: none;
     transition: fill 0.08s, stroke 0.08s, opacity 0.25s;
   }
   .riff-fb-dot.active { fill: #e67e22; opacity: 1; }
-  .riff-fb-dot.active-open { fill: transparent; stroke: #e67e22; stroke-width: 2.5; opacity: 1; }
-  .riff-fb-dot.fading { fill: #c9b99a; opacity: 0.5; }
-  .riff-fb-dot.fading-open { fill: transparent; stroke: #c9b99a; stroke-width: 2; opacity: 0.5; }
+  .riff-fb-dot.active-open { fill: transparent; stroke: #e67e22; stroke-width: 1.5; opacity: 1; }
+  .riff-fb-dot.fading { fill: #bbb; opacity: 0.5; }
+  .riff-fb-dot.fading-open { fill: transparent; stroke: #bbb; stroke-width: 1.5; opacity: 0.5; }
 
   @media print {
     .sidebar, .toolbar, #editArea, #filePicker, .sidebar-toggle, .sidebar-overlay, .float-scroll, .voicing-popup, .riff-popup, .riff-popup-overlay { display: none !important; }
@@ -775,6 +814,11 @@
     <svg id="riffPopupFretboard"></svg>
     <div class="riff-popup-controls">
       <div class="riff-popup-beats" id="riffPopupBeats"></div>
+      <span class="riff-popup-tempo">
+        <button id="riffPopupTempoDown">&minus;</button>
+        <span id="riffPopupTempoVal">120</span>
+        <button id="riffPopupTempoUp">+</button>
+      </span>
       <button id="riffPopupPlayBtn">&#9654;</button>
       <button id="riffPopupStopBtn" class="stop" style="display:none">&#9632;</button>
       <label><input type="checkbox" id="riffPopupLoop" checked> Loop</label>
@@ -1975,6 +2019,25 @@ const HarmonicAnalysis = (() => {
 // Exposes: playDrumBeat(), playBass(), resetBackingTrack(), isLastChord(),
 //          getAudioBus()
 
+function getChordNameFromElement(el) {
+  return el.getAttribute('data-chord-name')
+    || el.querySelector('.chord, .chord-chart-label, .ireal-cell-label')?.textContent
+    || el.textContent.trim();
+}
+
+function parseBassChord(name) {
+  const slashIdx = name.indexOf('/');
+  if (slashIdx > 0) {
+    const bassNote = name.substring(slashIdx + 1);
+    const bassParsed = ChordLibrary.parseChord(bassNote);
+    const mainParsed = ChordLibrary.parseChord(name.substring(0, slashIdx));
+    if (bassParsed && mainParsed) {
+      return { root: bassParsed.root, quality: mainParsed.quality, rootIndex: bassParsed.rootIndex };
+    }
+  }
+  return ChordLibrary.parseChord(name);
+}
+
 let drumMeasureCount = 0;
 let walkingBassApproachDir = 1;
 let walkingBassSkipNext = false;
@@ -2048,6 +2111,14 @@ const DRUM_PATTERNS = {
     { ride: true },
     { ride: true, hat: true },
     { ride: true, kick: true },
+  ],
+  waltz: [
+    { kick: true, ride: true },
+    {},
+    { ride: true },
+    { ride: true },
+    { hat: true, ride: true },
+    {},
   ]
 };
 
@@ -2188,13 +2259,56 @@ function playDrumSlot(ctx, slot, time, soft) {
   if (slot.ride) playRide(ctx, time);
 }
 
+function isWaltzTime() {
+  return typeof playbackBeatsPerMeasure !== 'undefined' && playbackBeatsPerMeasure === 3;
+}
+
 function playDrumBeat() {
   if (drumVolume === 0) return;
   const ctx = getAudioCtx();
   const now = ctx.currentTime;
   const beatDuration = 60 / playbackBPM;
+  const waltz = isWaltzTime();
   const isSwing = rhythm === 'swing';
   const offBeatDelay = isSwing ? beatDuration * 2 / 3 : beatDuration / 2;
+
+  if (waltz) {
+    const pattern = DRUM_PATTERNS.waltz;
+    const slotsPerMeasure = 6;
+
+    if (isLastChord() && playbackBeatInChord > 0) {
+      drumSubBeat = (drumSubBeat + 2) % slotsPerMeasure;
+      if (drumSubBeat === 0) drumMeasureCount++;
+      return;
+    }
+
+    const slot1 = pattern[drumSubBeat % slotsPerMeasure];
+    playDrumSlot(ctx, slot1, now, true);
+
+    const slot2 = pattern[(drumSubBeat + 1) % slotsPerMeasure];
+    playDrumSlot(ctx, slot2, now + offBeatDelay, true);
+
+    const waltzAccents = [
+      null,
+      { pos: 2, off: true },
+      null,
+      null,
+      { pos: 4, off: false },
+      null,
+      { pos: 0, off: true },
+      { pos: 2, off: false },
+    ];
+    const accent = waltzAccents[drumMeasureCount % 8];
+    if (accent && drumSubBeat === accent.pos) {
+      const t = accent.off ? now + offBeatDelay : now;
+      playSnare(ctx, t);
+    }
+
+    drumSubBeat = (drumSubBeat + 2) % slotsPerMeasure;
+    if (drumSubBeat === 0) drumMeasureCount++;
+    return;
+  }
+
   const pattern = DRUM_PATTERNS[rhythm];
 
   if (isLastChord() && playbackBeatInChord > 0) {
@@ -2413,9 +2527,8 @@ function getChordTones(rootIndex, quality) {
 function getNextChordRoot() {
   if (playbackIndex + 1 >= playbackElements.length) return null;
   const next = playbackElements[playbackIndex + 1];
-  const name = next.element.querySelector('.chord, .chord-chart-label')?.textContent
-    || next.element.textContent.trim();
-  const parsed = ChordLibrary.parseChord(name);
+  const name = getChordNameFromElement(next.element);
+  const parsed = parseBassChord(name);
   return parsed ? parsed.rootIndex : null;
 }
 
@@ -2791,19 +2904,49 @@ function playBossaSoloBass(ctx, now, rootIndex, quality, chordBeats, beatDuratio
   }
 }
 
+function playWaltzHeadBass(ctx, now, rootIndex, quality, chordBeats, beatDuration) {
+  const beatInMeasure = playbackBeatInMeasure;
+  const rootFreq = noteFrequency(rootIndex, 2);
+  if (beatInMeasure === 0) {
+    playBassNote(ctx, now, rootFreq, beatDuration * 2.5);
+  }
+}
+
+function playWaltzWalkingBass(ctx, now, rootIndex, quality, chordBeats, beatDuration) {
+  const beatInMeasure = playbackBeatInMeasure;
+  const rootFreq = noteFrequency(rootIndex, 2);
+  const fifthFreq = noteFrequency(getFifth(rootIndex, quality), 2);
+  const tones = getChordTones(rootIndex, quality);
+  const thirdFreq = noteFrequency(tones.length > 1 ? tones[1] : rootIndex, 2);
+
+  if (beatInMeasure === 0) {
+    playBassNote(ctx, now, rootFreq, beatDuration * 0.95);
+  } else if (beatInMeasure === 1) {
+    playBassNote(ctx, now, fifthFreq, beatDuration * 0.95);
+  } else if (beatInMeasure === 2) {
+    const nextRoot = getNextChordRoot();
+    if (nextRoot !== null) {
+      const approachFreq = noteFrequency(pickApproachNote(nextRoot, getHarmonyInfo()), 2);
+      playBassNote(ctx, now, approachFreq, beatDuration * 0.95);
+    } else {
+      playBassNote(ctx, now, thirdFreq, beatDuration * 0.95);
+    }
+  }
+}
+
 function playBass() {
   if (bassVolume === 0) return;
   if (playbackIndex >= playbackElements.length) return;
   const ctx = getAudioCtx();
   const now = ctx.currentTime;
   const beatDuration = 60 / playbackBPM;
+  const waltz = isWaltzTime();
   const isSwing = rhythm === 'swing';
   const offBeatDelay = isSwing ? beatDuration * 2 / 3 : beatDuration / 2;
 
   const current = playbackElements[playbackIndex];
-  const name = current.element.querySelector('.chord, .chord-chart-label')?.textContent
-    || current.element.textContent.trim();
-  const parsed = ChordLibrary.parseChord(name);
+  const name = getChordNameFromElement(current.element);
+  const parsed = parseBassChord(name);
   if (!parsed) return;
 
   const rootIndex = parsed.rootIndex;
@@ -2812,7 +2955,13 @@ function playBass() {
 
   if (isLastChord() && playbackBeatInChord > 0) return;
   if (isLastChord() && playbackBeatInChord === 0) {
-    playBassNote(ctx, now, noteFrequency(rootIndex, 2), beatDuration * 4);
+    playBassNote(ctx, now, noteFrequency(rootIndex, 2), beatDuration * (waltz ? 3 : 4));
+    return;
+  }
+
+  if (waltz) {
+    if (bassMode === 'head') playWaltzHeadBass(ctx, now, rootIndex, quality, chordBeats, beatDuration);
+    else playWaltzWalkingBass(ctx, now, rootIndex, quality, chordBeats, beatDuration);
     return;
   }
 
@@ -3817,103 +3966,171 @@ function riffRenderToBuffer(ctx, flat, riff, secPerBeat) {
 }
 
 // --- Riff Fretboard (for popup) ---
-const RIFF_FB_FRETS = 12;
-const RIFF_FB_TOP = 36;
-const RIFF_FB_LEFT = 24;
-const RIFF_FB_FRET_H = 44;
-const RIFF_FB_STR_SP = 32;
-const RIFF_FB_DOT_R = 8;
-const RIFF_FB_BOTTOM = 16;
-const RIFF_FB_RIGHT = 12;
 let riffDotElements = {};
+let riffFbStartFret = 1;
+let riffFbFretCount = 4;
 
-function riffRenderFretboard(svg) {
-  const strings = RIFF_STRING_ORDER['GCEA'];
-  const w = RIFF_FB_LEFT + (strings.length - 1) * RIFF_FB_STR_SP + RIFF_FB_RIGHT;
-  const h = RIFF_FB_TOP + RIFF_FB_FRETS * RIFF_FB_FRET_H + RIFF_FB_BOTTOM;
-  svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
-  svg.setAttribute('width', w);
-  svg.setAttribute('height', h);
-  svg.innerHTML = '';
-  riffDotElements = {};
-  const nutY = RIFF_FB_TOP, firstX = RIFF_FB_LEFT;
-  for (let i = 0; i < strings.length; i++) {
-    const x = firstX + i * RIFF_FB_STR_SP;
-    const lbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    lbl.setAttribute('x', x); lbl.setAttribute('y', nutY - 10);
-    lbl.setAttribute('class', 'riff-fb-fret-num');
-    lbl.setAttribute('style', 'font-size:12px;font-weight:600;fill:#555');
-    lbl.textContent = strings[i]; svg.appendChild(lbl);
-  }
-  const nut = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-  nut.setAttribute('x1', firstX - 6); nut.setAttribute('y1', nutY);
-  nut.setAttribute('x2', firstX + (strings.length - 1) * RIFF_FB_STR_SP + 6); nut.setAttribute('y2', nutY);
-  nut.setAttribute('class', 'riff-fb-nut'); svg.appendChild(nut);
-  for (let f = 1; f <= RIFF_FB_FRETS; f++) {
-    const y = nutY + f * RIFF_FB_FRET_H;
-    const fl = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    fl.setAttribute('x1', firstX - 6); fl.setAttribute('y1', y);
-    fl.setAttribute('x2', firstX + (strings.length - 1) * RIFF_FB_STR_SP + 6); fl.setAttribute('y2', y);
-    fl.setAttribute('class', 'riff-fb-fret'); svg.appendChild(fl);
-  }
-  for (let f = 1; f <= RIFF_FB_FRETS; f++) {
-    const y = nutY + (f - 0.5) * RIFF_FB_FRET_H;
-    const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    txt.setAttribute('x', 8); txt.setAttribute('y', y + 4);
-    txt.setAttribute('class', 'riff-fb-fret-num'); txt.textContent = f; svg.appendChild(txt);
-  }
-  const midX = firstX + (strings.length - 1) * RIFF_FB_STR_SP / 2;
-  for (const f of [5, 7, 9]) {
-    if (f > RIFF_FB_FRETS) continue;
-    const cy = nutY + (f - 0.5) * RIFF_FB_FRET_H;
-    const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    c.setAttribute('cx', midX); c.setAttribute('cy', cy); c.setAttribute('r', 4);
-    c.setAttribute('class', 'riff-fb-marker'); svg.appendChild(c);
-  }
-  for (const f of [12]) {
-    if (f > RIFF_FB_FRETS) continue;
-    const cy = nutY + (f - 0.5) * RIFF_FB_FRET_H;
-    for (const offset of [-RIFF_FB_STR_SP * 0.6, RIFF_FB_STR_SP * 0.6]) {
-      const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      c.setAttribute('cx', midX + offset); c.setAttribute('cy', cy); c.setAttribute('r', 4);
-      c.setAttribute('class', 'riff-fb-marker'); svg.appendChild(c);
+function riffGetFretRange(flat) {
+  let minFret = 99, maxFret = 0, hasOpen = false;
+  for (const token of flat) {
+    if (token.type !== 'note' || !token.notes) continue;
+    for (const n of token.notes) {
+      if (n.fret === 0) { hasOpen = true; continue; }
+      if (n.fret < minFret) minFret = n.fret;
+      if (n.fret > maxFret) maxFret = n.fret;
     }
   }
-  for (let i = 0; i < strings.length; i++) {
-    const x = firstX + i * RIFF_FB_STR_SP;
-    const sl = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    sl.setAttribute('x1', x); sl.setAttribute('y1', nutY);
-    sl.setAttribute('x2', x); sl.setAttribute('y2', nutY + RIFF_FB_FRETS * RIFF_FB_FRET_H);
-    sl.setAttribute('class', 'riff-fb-string'); svg.appendChild(sl);
+  if (minFret > maxFret) return { startFret: 1, fretCount: 4 };
+  const needNut = hasOpen || minFret <= 1;
+  let startFret = needNut ? 1 : Math.max(1, minFret - 1);
+  let fretCount = Math.max(4, maxFret - startFret + 2);
+  if (startFret === 1 && maxFret + 1 < fretCount) fretCount = Math.max(4, maxFret + 1);
+  return { startFret, fretCount };
+}
+
+function riffRenderFretboard(svg, flat) {
+  const strings = RIFF_STRING_ORDER['GCEA'];
+  const range = flat ? riffGetFretRange(flat) : { startFret: 1, fretCount: 4 };
+  riffFbStartFret = range.startFret;
+  riffFbFretCount = range.fretCount;
+  const showNut = riffFbStartFret === 1;
+
+  const SIDE_MARGIN = 18;
+  const TOP_MARGIN = 16;
+  const BOTTOM_MARGIN = 6;
+  const STRING_SP = 11.33;
+  const FRET_SP = 14.5;
+  const DOT_R = 4;
+  const W = 70;
+  const H = TOP_MARGIN + riffFbFretCount * FRET_SP + BOTTOM_MARGIN;
+
+  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+  svg.style.width = '210px';
+  svg.style.height = (H / W * 210) + 'px';
+  svg.innerHTML = '';
+  riffDotElements = {};
+
+  const fretTop = TOP_MARGIN;
+  const firstX = SIDE_MARGIN;
+
+  for (let i = 0; i <= riffFbFretCount; i++) {
+    const y = fretTop + i * FRET_SP;
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', firstX);
+    line.setAttribute('x2', firstX + (strings.length - 1) * STRING_SP);
+    line.setAttribute('y1', y); line.setAttribute('y2', y);
+    if (i === 0 && showNut) {
+      line.setAttribute('stroke', '#222'); line.setAttribute('stroke-width', '4');
+    } else {
+      line.setAttribute('stroke', '#999'); line.setAttribute('stroke-width', '0.8');
+    }
+    svg.appendChild(line);
   }
+
   for (let i = 0; i < strings.length; i++) {
-    const sn = strings[i], x = firstX + i * RIFF_FB_STR_SP;
-    for (let f = 0; f <= RIFF_FB_FRETS; f++) {
-      const cy = f === 0 ? nutY - 14 : nutY + (f - 0.5) * RIFF_FB_FRET_H;
+    const x = firstX + i * STRING_SP;
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', x); line.setAttribute('x2', x);
+    line.setAttribute('y1', fretTop);
+    line.setAttribute('y2', fretTop + riffFbFretCount * FRET_SP);
+    line.setAttribute('stroke', '#666'); line.setAttribute('stroke-width', '1');
+    svg.appendChild(line);
+  }
+
+  if (!showNut) {
+    const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    t.setAttribute('x', firstX - 6);
+    t.setAttribute('y', fretTop + FRET_SP / 2 + 4);
+    t.setAttribute('text-anchor', 'end');
+    t.setAttribute('font-size', '11'); t.setAttribute('font-weight', 'bold'); t.setAttribute('fill', '#444');
+    t.textContent = riffFbStartFret;
+    svg.appendChild(t);
+  }
+
+  const midX = firstX + (strings.length - 1) * STRING_SP / 2;
+  for (let f = riffFbStartFret; f < riffFbStartFret + riffFbFretCount; f++) {
+    const relFret = f - riffFbStartFret;
+    const isMarker = [5, 7, 9].includes(f);
+    const isDblMarker = f === 12;
+    if (isMarker) {
+      const cy = fretTop + relFret * FRET_SP + FRET_SP / 2;
       const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      c.setAttribute('cx', x); c.setAttribute('cy', cy); c.setAttribute('r', RIFF_FB_DOT_R);
-      c.setAttribute('class', 'riff-fb-dot'); svg.appendChild(c);
+      c.setAttribute('cx', midX); c.setAttribute('cy', cy); c.setAttribute('r', 3);
+      c.setAttribute('fill', '#ddd'); svg.appendChild(c);
+    }
+    if (isDblMarker) {
+      const cy = fretTop + relFret * FRET_SP + FRET_SP / 2;
+      for (const off of [-STRING_SP * 0.8, STRING_SP * 0.8]) {
+        const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        c.setAttribute('cx', midX + off); c.setAttribute('cy', cy); c.setAttribute('r', 3);
+        c.setAttribute('fill', '#ddd'); svg.appendChild(c);
+      }
+    }
+  }
+
+  for (let i = 0; i < strings.length; i++) {
+    const sn = strings[i], x = firstX + i * STRING_SP;
+    if (showNut) {
+      const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      c.setAttribute('cx', x); c.setAttribute('cy', fretTop - 5);
+      c.setAttribute('r', DOT_R); c.setAttribute('class', 'riff-fb-dot');
+      svg.appendChild(c);
+      riffDotElements[sn + ':0'] = c;
+    }
+    for (let f = riffFbStartFret; f < riffFbStartFret + riffFbFretCount; f++) {
+      const relFret = f - riffFbStartFret;
+      const cy = fretTop + relFret * FRET_SP + FRET_SP / 2;
+      const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      c.setAttribute('cx', x); c.setAttribute('cy', cy);
+      c.setAttribute('r', DOT_R); c.setAttribute('class', 'riff-fb-dot');
+      svg.appendChild(c);
       riffDotElements[sn + ':' + f] = c;
     }
   }
 }
 
+let riffActiveColor = '#e67e22';
+
 function riffClearDots() {
-  for (const key in riffDotElements) riffDotElements[key].setAttribute('class', 'riff-fb-dot');
+  for (const key in riffDotElements) {
+    const el = riffDotElements[key];
+    el.setAttribute('class', 'riff-fb-dot');
+    el.style.fill = '';
+    el.style.stroke = '';
+    el.style.opacity = '';
+  }
 }
 
 function riffActivateDot(s, f) {
   const el = riffDotElements[s + ':' + f];
-  if (el) el.setAttribute('class', f === 0 ? 'riff-fb-dot active-open' : 'riff-fb-dot active');
+  if (!el) return;
+  if (f === 0) {
+    el.setAttribute('class', 'riff-fb-dot active-open');
+    el.style.fill = 'transparent';
+    el.style.stroke = riffActiveColor;
+  } else {
+    el.setAttribute('class', 'riff-fb-dot active');
+    el.style.fill = riffActiveColor;
+    el.style.stroke = '';
+  }
+  el.style.opacity = '1';
 }
 
 function riffFadeDot(s, f) {
   const key = s + ':' + f;
+  const el = riffDotElements[key];
+  if (!el) return;
   const cls = f === 0 ? 'riff-fb-dot fading-open' : 'riff-fb-dot fading';
-  if (riffDotElements[key]) {
-    riffDotElements[key].setAttribute('class', cls);
-    setTimeout(() => { if (riffDotElements[key] && riffDotElements[key].getAttribute('class') === cls) riffDotElements[key].setAttribute('class', 'riff-fb-dot'); }, 300);
-  }
+  el.setAttribute('class', cls);
+  el.style.fill = f === 0 ? 'transparent' : '#bbb';
+  el.style.stroke = f === 0 ? '#bbb' : '';
+  el.style.opacity = '0.5';
+  setTimeout(() => {
+    if (el.getAttribute('class') === cls) {
+      el.setAttribute('class', 'riff-fb-dot');
+      el.style.fill = ''; el.style.stroke = ''; el.style.opacity = '';
+    }
+  }, 300);
 }
 
 // --- Riff Popup Controller ---
@@ -3924,6 +4141,7 @@ let riffPopupSource = null;
 let riffPopupAnimId = null;
 let riffPopupStartTime = 0;
 let riffPopupSecPerBeat = 0;
+let riffPopupBPM = 120;
 let currentSongRiffs = {};
 let riffPreRenderedBuffers = {};
 let activeRiffSource = null;
@@ -3932,6 +4150,28 @@ let activeRiffBeatInRiff = 0;
 let activeRiffJustStarted = false;
 let activeRiffFlat = null;
 let activeRiffData = null;
+
+const RIFF_COLORS = [
+  { bg: '#e67e22', light: 'rgba(230,126,34,', border: 'rgba(230,126,34,0.45)' },
+  { bg: '#2980b9', light: 'rgba(41,128,185,', border: 'rgba(41,128,185,0.45)' },
+  { bg: '#8e44ad', light: 'rgba(142,68,173,', border: 'rgba(142,68,173,0.45)' },
+  { bg: '#27ae60', light: 'rgba(39,174,96,',  border: 'rgba(39,174,96,0.45)' },
+  { bg: '#c0392b', light: 'rgba(192,57,43,',  border: 'rgba(192,57,43,0.45)' },
+  { bg: '#16a085', light: 'rgba(22,160,133,',  border: 'rgba(22,160,133,0.45)' },
+];
+let riffColorMap = {};
+
+function buildRiffColorMap(riffs) {
+  riffColorMap = {};
+  const names = Object.keys(riffs).sort();
+  for (let i = 0; i < names.length; i++) {
+    riffColorMap[names[i]] = RIFF_COLORS[i % RIFF_COLORS.length];
+  }
+}
+
+function getRiffColor(riffName) {
+  return riffColorMap[riffName] || RIFF_COLORS[0];
+}
 
 function isRiffAvailable() {
   return currentTuning === 'GCEA' && transposeAmount === 0;
@@ -3943,16 +4183,22 @@ function openRiffPopup(riffName) {
   if (!riff || riff.errors.length > 0) return;
   riffPopupRiff = riff;
   riffPopupFlat = riffFlattenTokens(riff);
+  riffActiveColor = getRiffColor(riffName).bg;
   document.getElementById('riffPopupTitle').textContent = riff.name + ' (' + riff.beats + ' beats' + (riff.swing ? ', swing' : '') + ')';
-  riffRenderFretboard(document.getElementById('riffPopupFretboard'));
+  riffRenderFretboard(document.getElementById('riffPopupFretboard'), riffPopupFlat);
   const beatsEl = document.getElementById('riffPopupBeats');
   beatsEl.innerHTML = '';
   for (let i = 0; i < Math.ceil(riff.beats); i++) {
     const d = document.createElement('div'); d.className = 'riff-beat-dot'; beatsEl.appendChild(d);
   }
+  riffPopupBPM = playbackBPM;
+  document.getElementById('riffPopupTempoVal').textContent = riffPopupBPM;
+  document.querySelector('.riff-popup-tempo').style.display = '';
   document.getElementById('riffPopupPlayBtn').style.display = '';
   document.getElementById('riffPopupStopBtn').style.display = 'none';
-  document.getElementById('riffPopup').classList.add('visible');
+  const popup = document.getElementById('riffPopup');
+  popup.classList.remove('playback-mode');
+  popup.classList.add('visible');
   document.getElementById('riffPopupOverlay').classList.add('visible');
 }
 
@@ -3966,7 +4212,7 @@ function closeRiffPopup() {
 function startRiffPopupPlayback() {
   if (!riffPopupRiff || riffPopupPlaying) return;
   const ctx = getAudioCtx();
-  const secPerBeat = 60 / playbackBPM;
+  const secPerBeat = 60 / riffPopupBPM;
   riffPopupSecPerBeat = secPerBeat;
   const flat = riffPopupFlat;
   const riff = riffPopupRiff;
@@ -4050,16 +4296,20 @@ function startRiffForChord(riffName, chordBeats) {
   if (showRiffs) {
     riffPopupRiff = riff;
     riffPopupFlat = activeRiffFlat;
+    riffActiveColor = getRiffColor(riffName).bg;
     document.getElementById('riffPopupTitle').textContent = riff.name;
-    riffRenderFretboard(document.getElementById('riffPopupFretboard'));
+    riffRenderFretboard(document.getElementById('riffPopupFretboard'), activeRiffFlat);
     const beatsEl = document.getElementById('riffPopupBeats');
     beatsEl.innerHTML = '';
     for (let i = 0; i < Math.ceil(riff.beats); i++) {
       const d = document.createElement('div'); d.className = 'riff-beat-dot'; beatsEl.appendChild(d);
     }
+    document.querySelector('.riff-popup-tempo').style.display = 'none';
     document.getElementById('riffPopupPlayBtn').style.display = 'none';
     document.getElementById('riffPopupStopBtn').style.display = 'none';
-    document.getElementById('riffPopup').classList.add('visible');
+    const popup = document.getElementById('riffPopup');
+    popup.classList.add('playback-mode');
+    popup.classList.add('visible');
     document.getElementById('riffPopupOverlay').classList.remove('visible');
   }
   updateRiffVisuals();
@@ -5541,6 +5791,7 @@ function renderSong() {
   const text = document.getElementById('chordProInput').value;
   const song = parseChordPro(text);
   currentSongRiffs = song.riffs || {};
+  buildRiffColorMap(currentSongRiffs);
   playbackBeatsPerMeasure = song.time ? song.time.beats : 4;
   const semitones = getTranspose();
   const useFlats = semitones < 0;
@@ -5971,16 +6222,18 @@ function renderLyrics(song, semitones, useFlats, output) {
           pair.appendChild(chordSpan);
         }
         if (seg.riffName && song.riffs && song.riffs[seg.riffName]) {
+          const rc = getRiffColor(seg.riffName);
           const riffIcon = document.createElement('span');
           riffIcon.className = 'riff-indicator';
           if (!isRiffAvailable()) {
             riffIcon.classList.add('disabled');
             riffIcon.title = 'Riff available in original key (GCEA, no transpose)';
           } else {
-            riffIcon.title = 'Riff: ' + seg.riffName;
+            riffIcon.style.background = rc.bg;
+            riffIcon.title = 'Click to view riff: ' + seg.riffName;
             riffIcon.addEventListener('click', (e) => { e.stopPropagation(); openRiffPopup(seg.riffName); });
           }
-          riffIcon.textContent = '♪';
+          riffIcon.textContent = 'RIFF';
           pair.appendChild(riffIcon);
         }
         const lyricSpan = document.createElement('span');
@@ -6217,6 +6470,13 @@ function renderGrid(song, semitones, useFlats, output) {
         if (take < 1) cell.classList.add('half-beat');
         cell.style.flex = take;
         if (ch.voicingIndex !== (ch.textFileVI || 0)) cell.classList.add('voicing-overridden');
+        const isRiffCell = ch.riffName && song.riffs && song.riffs[ch.riffName];
+        if (isRiffCell) {
+          const rc = getRiffColor(ch.riffName);
+          cell.classList.add('riff-span');
+          cell.style.setProperty('--riff-bg', 'linear-gradient(180deg, ' + rc.light + '0.10) 0%, ' + rc.light + '0.03) 100%)');
+          cell.style.setProperty('--riff-border', rc.border);
+        }
 
         if (ch.inserted) cell.style.color = '#e67e22';
         if (chartMode && take >= 1) {
@@ -6232,17 +6492,19 @@ function renderGrid(song, semitones, useFlats, output) {
         } else {
           cell.textContent = ch.name;
         }
-        if (ch.riffName && song.riffs && song.riffs[ch.riffName] && remaining === ch.beats) {
+        if (isRiffCell && remaining === ch.beats) {
+          const rc = getRiffColor(ch.riffName);
           const riffIcon = document.createElement('span');
           riffIcon.className = 'riff-indicator';
           if (!isRiffAvailable()) {
             riffIcon.classList.add('disabled');
             riffIcon.title = 'Riff available in original key (GCEA, no transpose)';
           } else {
-            riffIcon.title = 'Riff: ' + ch.riffName;
+            riffIcon.style.background = rc.bg;
+            riffIcon.title = 'Click to view riff: ' + ch.riffName;
             riffIcon.addEventListener('click', (e) => { e.stopPropagation(); openRiffPopup(ch.riffName); });
           }
-          riffIcon.textContent = '♪';
+          riffIcon.textContent = 'RIFF';
           cell.appendChild(riffIcon);
         }
         measureEl.appendChild(cell);
@@ -7544,6 +7806,16 @@ document.getElementById('riffPopupClose').addEventListener('click', closeRiffPop
 document.getElementById('riffPopupOverlay').addEventListener('click', closeRiffPopup);
 document.getElementById('riffPopupPlayBtn').addEventListener('click', startRiffPopupPlayback);
 document.getElementById('riffPopupStopBtn').addEventListener('click', stopRiffPopupPlayback);
+document.getElementById('riffPopupTempoDown').addEventListener('click', () => {
+  riffPopupBPM = Math.max(20, riffPopupBPM - 5);
+  document.getElementById('riffPopupTempoVal').textContent = riffPopupBPM;
+  if (riffPopupPlaying) { stopRiffPopupPlayback(); startRiffPopupPlayback(); }
+});
+document.getElementById('riffPopupTempoUp').addEventListener('click', () => {
+  riffPopupBPM = Math.min(300, riffPopupBPM + 5);
+  document.getElementById('riffPopupTempoVal').textContent = riffPopupBPM;
+  if (riffPopupPlaying) { stopRiffPopupPlayback(); startRiffPopupPlayback(); }
+});
 </script>
 </body>
 </html>
