@@ -631,6 +631,7 @@
         <select id="rhythmSelect" onchange="setRhythm(this.value)" title="Rhythm feel">
           <option value="swing">Swing</option>
           <option value="bossa">Bossa Nova</option>
+          <option value="funk">Funk</option>
         </select>
         <button class="scroll-play" id="playbackBtn" onclick="togglePlayback()">&#9654;</button>
       </div>
@@ -789,6 +790,7 @@
       <select id="floatRhythmSelect" onchange="setRhythm(this.value)" title="Rhythm feel">
         <option value="swing">Swing</option>
         <option value="bossa">Bossa Nova</option>
+        <option value="funk">Funk</option>
       </select>
       <input type="range" min="0" max="100" value="50" id="floatClickVol" oninput="setClickVolume(this.value/100)" title="Click">
       <input type="range" min="0" max="100" value="80" id="floatDrumVol" oninput="setDrumVolume(this.value/100)" title="Drums">
@@ -2119,6 +2121,16 @@ const DRUM_PATTERNS = {
     { ride: true },
     { hat: true, ride: true },
     {},
+  ],
+  funk: [
+    { kick: true, ride: true },
+    { ride: true },
+    { ride: true, hat: true },
+    { ride: true, kick: true },
+    { ride: true },
+    { ride: true },
+    { ride: true, hat: true },
+    { ride: true },
   ]
 };
 
@@ -2182,8 +2194,10 @@ function playRide(ctx, time) {
   tick.start(time); tick.stop(time + tickDur);
 }
 
-function playSnare(ctx, time) {
+function playSnare(ctx, time, ghost) {
   const dest = getAudioBus('drum');
+  const vol = ghost ? 0.08 : 0.3;
+  const oscVol = ghost ? 0.04 : 0.15;
   const bufSize = ctx.sampleRate * 0.1;
   const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
   const data = buf.getChannelData(0);
@@ -2192,14 +2206,14 @@ function playSnare(ctx, time) {
   noise.buffer = buf;
   const noiseGain = ctx.createGain();
   noise.connect(noiseGain); noiseGain.connect(dest);
-  noiseGain.gain.setValueAtTime(0.3, time);
+  noiseGain.gain.setValueAtTime(vol, time);
   noiseGain.gain.exponentialRampToValueAtTime(0.001, time + 0.1);
   noise.start(time); noise.stop(time + 0.1);
   const osc = ctx.createOscillator();
   const oscGain = ctx.createGain();
   osc.connect(oscGain); oscGain.connect(dest);
   osc.frequency.value = 200;
-  oscGain.gain.setValueAtTime(0.15, time);
+  oscGain.gain.setValueAtTime(oscVol, time);
   oscGain.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
   osc.start(time); osc.stop(time + 0.05);
 }
@@ -2346,6 +2360,41 @@ function playDrumBeat() {
     const rimOnSlots = new Set([0, 3, 6, 10, 13]);
     if (rimOnSlots.has(bossaPos)) playRimshot(ctx, now);
     if (rimOnSlots.has(bossaPos + 1)) playRimshot(ctx, now + offBeatDelay);
+  }
+
+  if (rhythm === 'funk') {
+    if (drumSubBeat === 2 || drumSubBeat === 6) playSnare(ctx, now);
+    const funkKickVar = [
+      [],
+      [5],
+      [7],
+      [3, 5],
+    ];
+    const extraKicks = new Set(funkKickVar[drumMeasureCount % funkKickVar.length]);
+    if (extraKicks.has(drumSubBeat)) playKick(ctx, now);
+    if (extraKicks.has(drumSubBeat + 1)) playKick(ctx, now + offBeatDelay);
+    const funkGhosts = [
+      [],
+      [5],
+      [],
+      [1],
+    ];
+    const ghostSlots = new Set(funkGhosts[drumMeasureCount % funkGhosts.length]);
+    if (ghostSlots.has(drumSubBeat)) playSnare(ctx, now, true);
+    if (ghostSlots.has(drumSubBeat + 1)) playSnare(ctx, now + offBeatDelay, true);
+
+    const current = playbackElements[playbackIndex];
+    if (current && playbackBeatInChord === current.beats - 1 && !isLastChord()) {
+      const sixteenth = beatDuration / 4;
+      const loud = (fn, t) => { fn(ctx, t); fn(ctx, t); };
+      const fills = [
+        () => { playSnare(ctx, now); playSnare(ctx, now + sixteenth); playKick(ctx, now + sixteenth * 2); playSnare(ctx, now + sixteenth * 3); playKick(ctx, now + offBeatDelay); playSnare(ctx, now + offBeatDelay); },
+        () => { playKick(ctx, now); playSnare(ctx, now + sixteenth); playSnare(ctx, now + sixteenth * 2); playKick(ctx, now + sixteenth * 3); playSnare(ctx, now + offBeatDelay); playSnare(ctx, now + offBeatDelay + sixteenth); },
+        () => { playSnare(ctx, now); playKick(ctx, now + sixteenth); playSnare(ctx, now + sixteenth * 2); playSnare(ctx, now + sixteenth * 3); playKick(ctx, now + offBeatDelay); playSnare(ctx, now + offBeatDelay); playKick(ctx, now + offBeatDelay); },
+        () => { playKick(ctx, now); playSnare(ctx, now + offBeatDelay); playSnare(ctx, now + offBeatDelay + sixteenth); playKick(ctx, now + offBeatDelay + sixteenth * 2); },
+      ];
+      fills[drumMeasureCount % fills.length]();
+    }
   }
 
   drumSubBeat = (drumSubBeat + 2) % 8;
@@ -2934,6 +2983,56 @@ function playWaltzWalkingBass(ctx, now, rootIndex, quality, chordBeats, beatDura
   }
 }
 
+function funkJitter() { return (Math.random() - 0.5) * 0.012; }
+
+function playFunkHeadBass(ctx, now, rootIndex, quality, chordBeats, beatDuration) {
+  const beatInMeasure = playbackBeatInMeasure;
+  const rootMidi = 12 * 3 + rootIndex;
+  const fifthMidi = rootMidi + (quality && (quality.includes('dim') || quality.includes('b5')) ? 6 : 7);
+  const flat7Midi = rootMidi + 10;
+  const octaveMidi = rootMidi + 12;
+  const halfBeat = beatDuration / 2;
+
+  if (beatInMeasure === 0) {
+    playBassNote(ctx, now + funkJitter(), midiToFreq(rootMidi), beatDuration * 1.4);
+  } else if (beatInMeasure === 1) {
+    const push = halfBeat + funkJitter();
+    playBassNote(ctx, now + push, midiToFreq(fifthMidi), beatDuration * 1.4);
+  } else if (beatInMeasure === 3) {
+    const velVar = 0.9 + Math.random() * 0.2;
+    playBassNote(ctx, now + funkJitter(), midiToFreq(flat7Midi), halfBeat * 1.0 * velVar);
+    playBassNote(ctx, now + halfBeat + funkJitter(), midiToFreq(octaveMidi), halfBeat * 1.2 * velVar);
+  }
+}
+
+function playFunkSoloBass(ctx, now, rootIndex, quality, chordBeats, beatDuration) {
+  const beatInMeasure = playbackBeatInMeasure;
+  const rootMidi = 12 * 3 + rootIndex;
+  const fifthOffset = quality && (quality.includes('dim') || quality.includes('b5')) ? 6 : 7;
+  const fifthMidi = rootMidi + fifthOffset;
+  const tones = getChordTones(rootIndex, quality);
+  const thirdMidi = tones.length > 1 ? rootMidi + ((tones[1] - rootIndex + 12) % 12) : rootMidi;
+  const seventhMidi = tones.length > 2 ? rootMidi + ((tones[tones.length - 1] - rootIndex + 12) % 12) : fifthMidi;
+  const halfBeat = beatDuration / 2;
+  const nextRoot = getNextChordRoot();
+
+  if (beatInMeasure === 0) {
+    playBassNote(ctx, now + funkJitter(), midiToFreq(rootMidi), beatDuration * 0.95);
+  } else if (beatInMeasure === 1) {
+    playBassNote(ctx, now + funkJitter(), midiToFreq(thirdMidi), beatDuration * 0.95);
+  } else if (beatInMeasure === 2) {
+    playBassNote(ctx, now + funkJitter(), midiToFreq(fifthMidi), beatDuration * 0.95);
+  } else if (beatInMeasure === 3) {
+    if (nextRoot !== null) {
+      const approachFreq = noteFrequency(pickApproachNote(nextRoot, getHarmonyInfo()), 2);
+      playBassNote(ctx, now + funkJitter(), midiToFreq(seventhMidi), halfBeat * 0.9);
+      playBassNote(ctx, now + halfBeat + funkJitter(), approachFreq, halfBeat * 0.9);
+    } else {
+      playBassNote(ctx, now + funkJitter(), midiToFreq(seventhMidi), beatDuration * 0.95);
+    }
+  }
+}
+
 function playBass() {
   if (bassVolume === 0) return;
   if (playbackIndex >= playbackElements.length) return;
@@ -2965,7 +3064,10 @@ function playBass() {
     return;
   }
 
-  if (isSwing) {
+  if (rhythm === 'funk') {
+    if (bassMode === 'head') playFunkHeadBass(ctx, now, rootIndex, quality, chordBeats, beatDuration);
+    else playFunkSoloBass(ctx, now, rootIndex, quality, chordBeats, beatDuration);
+  } else if (isSwing) {
     if (bassMode === 'head') playSwingHeadBass(ctx, now, rootIndex, quality, chordBeats, beatDuration, offBeatDelay);
     else playSwingWalkingBass(ctx, now, rootIndex, quality, chordBeats, beatDuration);
   } else {
@@ -5610,6 +5712,10 @@ function parseChordPro(text) {
         if (tm) result.time = { beats: parseInt(tm[1]), noteValue: parseInt(tm[2]) };
         result.lines.push({ type: 'directive', cmd, val });
       }
+      else if (cmd === 'rhythm') {
+        result.rhythm = val.trim().toLowerCase();
+        result.lines.push({ type: 'directive', cmd, val });
+      }
       else result.lines.push({ type: 'directive', cmd, val });
       continue;
     }
@@ -5723,7 +5829,7 @@ function buildRoadmapFromSong(song) {
   for (const line of song.lines) {
     if (line.type === 'directive') {
       const cmd = line.cmd;
-      if (cmd === 'end_of_chorus' || cmd === 'eoc' || cmd === 'end_of_verse' || cmd === 'eov' || cmd === 'time') continue;
+      if (cmd === 'end_of_chorus' || cmd === 'eoc' || cmd === 'end_of_verse' || cmd === 'eov' || cmd === 'time' || cmd === 'rhythm') continue;
       if (cmd === 'start_of_chorus' || cmd === 'soc') {
         if (chordIndex > currentStart) sections.push({ label: currentLabel, startChord: currentStart, endChord: chordIndex - 1 });
         currentLabel = 'Chorus';
@@ -5793,6 +5899,9 @@ function renderSong() {
   currentSongRiffs = song.riffs || {};
   buildRiffColorMap(currentSongRiffs);
   playbackBeatsPerMeasure = song.time ? song.time.beats : 4;
+  if (song.rhythm && ['swing', 'bossa', 'funk'].includes(song.rhythm)) {
+    setRhythm(song.rhythm);
+  }
   const semitones = getTranspose();
   const useFlats = semitones < 0;
   const output = document.getElementById('output');
@@ -6136,7 +6245,7 @@ function renderLyrics(song, semitones, useFlats, output) {
   for (const line of song.lines) {
     if (line.type === 'directive') {
       const cmd = line.cmd;
-      if (cmd === 'end_of_chorus' || cmd === 'eoc' || cmd === 'end_of_verse' || cmd === 'eov' || cmd === 'time') continue;
+      if (cmd === 'end_of_chorus' || cmd === 'eoc' || cmd === 'end_of_verse' || cmd === 'eov' || cmd === 'time' || cmd === 'rhythm') continue;
       if (cmd === 'start_of_chorus' || cmd === 'soc') {
         const lbl = document.createElement('span');
         lbl.className = 'section-label';
@@ -7778,18 +7887,21 @@ chordInput.addEventListener('keydown', (e) => {
   }
 });
 
-chordInput.addEventListener('paste', (e) => {
-  const pasted = (e.clipboardData || window.clipboardData).getData('text');
-  if (pasted && detectChordsAboveLyrics(pasted) && !hasChordProBrackets(pasted)) {
+chordInput.addEventListener('keydown', (e) => {
+  if (e.key === 'v' && (e.ctrlKey || e.metaKey) && e.shiftKey) {
     e.preventDefault();
-    const converted = smartPasteConvert(pasted);
-    const start = chordInput.selectionStart;
-    const end = chordInput.selectionEnd;
-    const before = chordInput.value.substring(0, start);
-    const after = chordInput.value.substring(end);
-    chordInput.value = before + converted + after;
-    chordInput.selectionStart = chordInput.selectionEnd = start + converted.length;
-    chordInput.dispatchEvent(new Event('input'));
+    navigator.clipboard.readText().then(pasted => {
+      if (pasted && detectChordsAboveLyrics(pasted) && !hasChordProBrackets(pasted)) {
+        pasted = smartPasteConvert(pasted);
+      }
+      const start = chordInput.selectionStart;
+      const end = chordInput.selectionEnd;
+      const before = chordInput.value.substring(0, start);
+      const after = chordInput.value.substring(end);
+      chordInput.value = before + pasted + after;
+      chordInput.selectionStart = chordInput.selectionEnd = start + pasted.length;
+      chordInput.dispatchEvent(new Event('input'));
+    });
   }
 });
 
