@@ -632,6 +632,7 @@
           <option value="swing">Swing</option>
           <option value="bossa">Bossa Nova</option>
           <option value="funk">Funk</option>
+          <option value="soul">Soul</option>
         </select>
         <button class="scroll-play" id="playbackBtn" onclick="togglePlayback()">&#9654;</button>
       </div>
@@ -2131,6 +2132,16 @@ const DRUM_PATTERNS = {
     { ride: true },
     { ride: true, hat: true },
     { ride: true },
+  ],
+  soul: [
+    { kick: true, hat: true, ride: true },
+    { hat: true, ride: true },
+    { hat: true, rim: true, ride: true },
+    { hat: true, kick: true, ride: true },
+    { kick: true, hat: true, ride: true },
+    { hat: true, ride: true },
+    { hat: true, rim: true, ride: true },
+    { hat: true, ride: true },
   ]
 };
 
@@ -2360,6 +2371,28 @@ function playDrumBeat() {
     const rimOnSlots = new Set([0, 3, 6, 10, 13]);
     if (rimOnSlots.has(bossaPos)) playRimshot(ctx, now);
     if (rimOnSlots.has(bossaPos + 1)) playRimshot(ctx, now + offBeatDelay);
+  }
+
+  if (rhythm === 'soul') {
+    const bar = drumMeasureCount % 2;
+    if (bar === 0) {
+      if (drumSubBeat === 2) playRimshot(ctx, now);
+      if (drumSubBeat === 6) playRimshot(ctx, now);
+      const kickVar = [[5], [3, 7], [5, 7], [3]][drumMeasureCount % 4];
+      const kickSet = new Set(kickVar);
+      if (kickSet.has(drumSubBeat)) playKick(ctx, now);
+      if (kickSet.has(drumSubBeat + 1)) playKick(ctx, now + offBeatDelay);
+    } else {
+      if (drumSubBeat === 2) playRimshot(ctx, now);
+      if (drumSubBeat === 6) { playRimshot(ctx, now); playKick(ctx, now); }
+      const kickVar2 = [[1, 5], [1], [5], [1, 7]][drumMeasureCount % 4];
+      const kickSet2 = new Set(kickVar2);
+      if (kickSet2.has(drumSubBeat)) playKick(ctx, now);
+      if (kickSet2.has(drumSubBeat + 1)) playKick(ctx, now + offBeatDelay);
+    }
+    if (drumMeasureCount % 3 === 2) {
+      if (drumSubBeat === 5) playSnare(ctx, now + offBeatDelay, true);
+    }
   }
 
   if (rhythm === 'funk') {
@@ -2985,6 +3018,62 @@ function playWaltzWalkingBass(ctx, now, rootIndex, quality, chordBeats, beatDura
 
 function funkJitter() { return (Math.random() - 0.5) * 0.012; }
 
+function soulJitter() { return (Math.random() - 0.5) * 0.015; }
+
+function playSoulHeadBass(ctx, now, rootIndex, quality, chordBeats, beatDuration) {
+  const beatInMeasure = playbackBeatInMeasure;
+  const rootMidi = 12 * 3 + rootIndex;
+  const fifthMidi = rootMidi + (quality && (quality.includes('dim') || quality.includes('b5')) ? 6 : 7);
+  const flat7Midi = rootMidi + 10;
+  const halfBeat = beatDuration / 2;
+
+  if (beatInMeasure === 0) {
+    playBassNote(ctx, now + soulJitter(), midiToFreq(rootMidi), beatDuration * 1.8);
+  } else if (beatInMeasure === 2) {
+    playBassNote(ctx, now + soulJitter(), midiToFreq(fifthMidi), beatDuration * 0.9);
+  } else if (beatInMeasure === 3) {
+    playBassNote(ctx, now + halfBeat + soulJitter(), midiToFreq(flat7Midi), halfBeat * 0.9);
+  }
+}
+
+function playSoulSoloBass(ctx, now, rootIndex, quality, chordBeats, beatDuration) {
+  const beatInMeasure = playbackBeatInMeasure;
+  const rootMidi = 12 * 3 + rootIndex;
+  const flat3Midi = rootMidi + 3;
+  const thirdMidi = rootMidi + (quality && quality.includes('m') && !quality.includes('maj') ? 3 : 4);
+  const fifthMidi = rootMidi + (quality && (quality.includes('dim') || quality.includes('b5')) ? 6 : 7);
+  const flat7Midi = rootMidi + 10;
+  const halfBeat = beatDuration / 2;
+  const nextRoot = getNextChordRoot();
+
+  const bar = drumMeasureCount % 2;
+  if (bar === 0) {
+    if (beatInMeasure === 0) {
+      playBassNote(ctx, now + soulJitter(), midiToFreq(rootMidi), beatDuration * 1.4);
+    } else if (beatInMeasure === 1) {
+      playBassNote(ctx, now + halfBeat + soulJitter(), midiToFreq(flat3Midi), halfBeat * 0.8);
+    } else if (beatInMeasure === 2) {
+      playBassNote(ctx, now + soulJitter(), midiToFreq(thirdMidi), beatDuration * 0.9);
+    } else if (beatInMeasure === 3) {
+      playBassNote(ctx, now + soulJitter(), midiToFreq(fifthMidi), halfBeat * 0.9);
+      playBassNote(ctx, now + halfBeat + soulJitter(), midiToFreq(flat7Midi), halfBeat * 0.9);
+    }
+  } else {
+    if (beatInMeasure === 0) {
+      playBassNote(ctx, now + soulJitter(), midiToFreq(rootMidi), beatDuration * 1.8);
+    } else if (beatInMeasure === 2) {
+      playBassNote(ctx, now + soulJitter(), midiToFreq(fifthMidi), beatDuration * 0.9);
+    } else if (beatInMeasure === 3) {
+      if (nextRoot !== null) {
+        const approachFreq = noteFrequency(pickApproachNote(nextRoot, getHarmonyInfo()), 2);
+        playBassNote(ctx, now + halfBeat + soulJitter(), approachFreq, halfBeat * 0.9);
+      } else {
+        playBassNote(ctx, now + halfBeat + soulJitter(), midiToFreq(flat7Midi), halfBeat * 0.9);
+      }
+    }
+  }
+}
+
 function playFunkHeadBass(ctx, now, rootIndex, quality, chordBeats, beatDuration) {
   const beatInMeasure = playbackBeatInMeasure;
   const rootMidi = 12 * 3 + rootIndex;
@@ -3067,6 +3156,9 @@ function playBass() {
   if (rhythm === 'funk') {
     if (bassMode === 'head') playFunkHeadBass(ctx, now, rootIndex, quality, chordBeats, beatDuration);
     else playFunkSoloBass(ctx, now, rootIndex, quality, chordBeats, beatDuration);
+  } else if (rhythm === 'soul') {
+    if (bassMode === 'head') playSoulHeadBass(ctx, now, rootIndex, quality, chordBeats, beatDuration);
+    else playSoulSoloBass(ctx, now, rootIndex, quality, chordBeats, beatDuration);
   } else if (isSwing) {
     if (bassMode === 'head') playSwingHeadBass(ctx, now, rootIndex, quality, chordBeats, beatDuration, offBeatDelay);
     else playSwingWalkingBass(ctx, now, rootIndex, quality, chordBeats, beatDuration);
@@ -4383,8 +4475,18 @@ function preRenderSongRiffs() {
 
 let activeRiffStartTime = 0;
 
-function startRiffForChord(riffName, chordBeats) {
-  if (activeRiffName === riffName && activeRiffSource) return;
+let activeRiffLooping = false;
+
+function isRiffStillPlaying() {
+  if (!activeRiffData || !activeRiffSource) return false;
+  if (activeRiffLooping) return true;
+  const secPerBeat = 60 / playbackBPM;
+  const elapsed = getAudioCtx().currentTime - activeRiffStartTime;
+  return elapsed < activeRiffData.beats * secPerBeat;
+}
+
+function startRiffForChord(riffName, chordBeats, forceRestart) {
+  if (activeRiffName === riffName && activeRiffSource && !forceRestart) return;
   stopActiveRiff();
   if (!isRiffAvailable()) return;
   const buf = riffPreRenderedBuffers[riffName];
@@ -4395,6 +4497,7 @@ function startRiffForChord(riffName, chordBeats) {
   activeRiffData = riff;
   activeRiffBeatInRiff = 0;
   activeRiffJustStarted = false;
+  activeRiffLooping = riff.beats <= chordBeats;
   activeRiffStartTime = getAudioCtx().currentTime;
   triggerRiffBuffer();
   const showRiffs = localStorage.getItem('uke-show-riffs') !== 'false';
@@ -4437,9 +4540,14 @@ function tickActiveRiff() {
   if (activeRiffJustStarted) { activeRiffJustStarted = false; return; }
   activeRiffBeatInRiff++;
   if (activeRiffBeatInRiff >= activeRiffData.beats) {
-    activeRiffBeatInRiff = 0;
-    activeRiffStartTime = getAudioCtx().currentTime;
-    triggerRiffBuffer();
+    if (activeRiffLooping) {
+      activeRiffBeatInRiff = 0;
+      activeRiffStartTime = getAudioCtx().currentTime;
+      triggerRiffBuffer();
+    } else {
+      stopActiveRiff();
+      return;
+    }
   }
   updateRiffVisuals();
 }
@@ -4476,7 +4584,7 @@ function stopActiveRiff() {
   if (riffPlaybackAnimId) { cancelAnimationFrame(riffPlaybackAnimId); riffPlaybackAnimId = null; }
   if (activeRiffSource) { try { activeRiffSource.stop(); } catch(e) {} activeRiffSource = null; }
   activeRiffName = null; activeRiffFlat = null; activeRiffData = null;
-  activeRiffBeatInRiff = 0;
+  activeRiffBeatInRiff = 0; activeRiffLooping = false;
   riffClearDots();
   document.querySelectorAll('#riffPopupBeats .riff-beat-dot').forEach(d => d.classList.remove('active'));
   document.getElementById('riffPopup').classList.remove('visible');
@@ -4689,9 +4797,10 @@ function highlightCurrentChord() {
   const riffName = current.element.dataset.riffName;
   if (!playbackInCountOff && riffName && riffPreRenderedBuffers[riffName]) {
     const wasActive = activeRiffName;
-    startRiffForChord(riffName, current.beats);
-    if (insideBeatTick && activeRiffName !== wasActive) activeRiffJustStarted = true;
-  } else if (!playbackInCountOff) {
+    const restart = riffName === activeRiffName;
+    startRiffForChord(riffName, current.beats, restart);
+    if (insideBeatTick && (activeRiffName !== wasActive || restart)) activeRiffJustStarted = true;
+  } else if (!playbackInCountOff && !isRiffStillPlaying()) {
     stopActiveRiff();
   }
 
@@ -5918,7 +6027,7 @@ function renderSong() {
   currentSongRiffs = song.riffs || {};
   buildRiffColorMap(currentSongRiffs);
   playbackBeatsPerMeasure = song.time ? song.time.beats : 4;
-  setRhythm(song.rhythm && ['swing', 'bossa', 'funk'].includes(song.rhythm) ? song.rhythm : 'swing');
+  setRhythm(song.rhythm && ['swing', 'bossa', 'funk', 'soul'].includes(song.rhythm) ? song.rhythm : 'swing');
   const semitones = getTranspose();
   const useFlats = semitones < 0;
   const output = document.getElementById('output');
