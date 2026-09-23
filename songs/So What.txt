@@ -1,0 +1,30 @@
+{title: So What}
+{artist: Miles Davis}
+{rhythm: swing}
+
+{riff: bass_head, 32, swing, instrument:bass}
+R:0.5 A5:0.5 D7:0.5 D9:0.5 G5:0.5 G7:0.5 G9:0.5 G5:0.5 G7:4
+R:0.5 A5:0.5 D7:0.5 D9:0.5 G5:0.5 G7:0.5 G9:0.5 G5:0.5 G7:0.5 D7:3.5
+R:0.5 A5:0.5 D7:0.5 D9:0.5 G5:0.5 G7:0.5 G9:0.5 G5:0.5 G7:4
+R:0.5 G9:1.5 G9:1 G9:1 G7:1.5 D7:2.5
+{end_riff}
+
+{riff: bass_head_eb, 32, swing, instrument:bass}
+R:0.5 A6:0.5 D8:0.5 D10:0.5 G6:0.5 G8:0.5 G10:0.5 G6:0.5 G8:4
+R:0.5 A6:0.5 D8:0.5 D10:0.5 G6:0.5 G8:0.5 G10:0.5 G6:0.5 G8:0.5 D8:3.5
+R:0.5 A6:0.5 D8:0.5 D10:0.5 G6:0.5 G8:0.5 G10:0.5 G6:0.5 G8:4
+R:0.5 G10:1.5 G10:1 G10:1 G8:1.5 D8:2.5
+{end_riff}
+
+{riff: response, 4, swing, instrument:uke}
+R:2 G2+C2+E3+A2:1.5 G0+C0+E1+A0:0.5
+{end_riff}
+
+{riff: response_eb, 4, swing, instrument:uke}
+R:2 G3+C3+E4+A3:1.5 G1+C1+E2+A1:0.5
+{end_riff}
+[NC:12][Dm7:4:bass_head]
+[Dm7:4:response][Dm7:4][Dm7:4:response][Dm7:4][Dm7:4:response][Dm7:4][Dm7:4:response][Dm7:4:bass_head]
+[Dm7:4:response][Dm7:4][Dm7:4:response][Dm7:4][Dm7:4:response][Dm7:4][Dm7:4:response][Dm7:4:bass_head_eb]
+[Ebm7:4:response_eb][Ebm7:4][Ebm7:4:response_eb][Ebm7:4][Ebm7:4:response_eb][Ebm7:4][Ebm7:4:response_eb][Ebm7:4:bass_head]
+[Dm7:4:response][Dm7:4][Dm7:4:response][Dm7:4][Dm7:4:response][Dm7:4][Dm7:4:response][Dm7:4]

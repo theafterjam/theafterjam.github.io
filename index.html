@@ -481,8 +481,13 @@
   .riff-popup-tempo span { min-width: 2.2em; text-align: center; }
   .riff-popup-beats {
     display: flex;
-    gap: 5px;
+    flex-direction: column;
+    gap: 3px;
     align-items: center;
+  }
+  .riff-beat-dot-row {
+    display: flex;
+    gap: 5px;
   }
   .riff-beat-dot {
     width: 10px; height: 10px;
@@ -504,8 +509,47 @@
   .riff-fb-dot.fading { fill: #bbb; opacity: 0.5; }
   .riff-fb-dot.fading-open { fill: transparent; stroke: #bbb; stroke-width: 1.5; opacity: 0.5; }
 
+  .riff-picker-dropdown {
+    background: #fff;
+    border: 1px solid #c9b99a;
+    border-radius: 6px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+    min-width: 140px;
+    overflow: hidden;
+  }
+  .riff-picker-item {
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 0.85em;
+    font-weight: 500;
+  }
+  .riff-picker-item:hover { background: #f5f0eb; }
+
+  .riff-playback-popup {
+    position: fixed;
+    right: 16px;
+    background: #fff;
+    border: 1px solid #c9b99a;
+    border-radius: 10px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    z-index: 9997;
+    max-width: 320px;
+    min-width: 180px;
+    overflow: hidden;
+  }
+  .riff-playback-popup .riff-popup-header {
+    padding: 6px 12px;
+    font-size: 0.85em;
+  }
+  .riff-playback-popup .riff-popup-body {
+    padding: 10px;
+  }
+  .riff-playback-popup .riff-popup-controls {
+    font-size: 0.8em;
+  }
+
   @media print {
-    .sidebar, .toolbar, #editArea, #filePicker, .sidebar-toggle, .sidebar-overlay, .float-scroll, .voicing-popup, .riff-popup, .riff-popup-overlay { display: none !important; }
+    .sidebar, .toolbar, #editArea, #filePicker, .sidebar-toggle, .sidebar-overlay, .float-scroll, .voicing-popup, .riff-popup, .riff-popup-overlay, .riff-playback-popup, .riff-picker-dropdown { display: none !important; }
     body { overflow: visible; height: auto; }
     .app-layout { display: block; height: auto; }
     .main-content { overflow: visible; }
@@ -2417,7 +2461,14 @@ function playDrumBeat() {
     if (ghostSlots.has(drumSubBeat + 1)) playSnare(ctx, now + offBeatDelay, true);
 
     const current = playbackElements[playbackIndex];
-    if (current && playbackBeatInChord === current.beats - 1 && !isLastChord()) {
+    const nextIsNewChord = current && playbackBeatInChord === current.beats - 1 && !isLastChord() && (function() {
+      const nextIdx = playbackIndex + 1;
+      if (nextIdx >= playbackElements.length) return false;
+      const curLogical = current.element.dataset.logicalIndex;
+      const nextLogical = playbackElements[nextIdx].element.dataset.logicalIndex;
+      return curLogical !== nextLogical;
+    })();
+    if (nextIsNewChord) {
       const sixteenth = beatDuration / 4;
       const loud = (fn, t) => { fn(ctx, t); fn(ctx, t); };
       const fills = [
@@ -3977,21 +4028,23 @@ function scrollToTop() {
 // --- Riff Engine ---
 const RIFF_OPEN_STRING_MIDI = {
   GCEA: { G: 55, C: 60, E: 64, A: 69 },
-  DGBE: { D: 50, G: 55, B: 59, E: 64 }
+  DGBE: { D: 50, G: 55, B: 59, E: 64 },
+  EADG: { E: 40, A: 45, D: 50, G: 55 }
 };
-const RIFF_STRING_ORDER = { GCEA: ['G', 'C', 'E', 'A'], DGBE: ['D', 'G', 'B', 'E'] };
+const RIFF_STRING_ORDER = { GCEA: ['G', 'C', 'E', 'A'], DGBE: ['D', 'G', 'B', 'E'], EADG: ['E', 'A', 'D', 'G'] };
 const RIFF_SWING_LONG = 2 / 3;
 const RIFF_SWING_SHORT = 1 / 3;
 
 function riffMidiToFreq(midi) { return 440 * Math.pow(2, (midi - 69) / 12); }
 
 function parseRiff(text, tuning) {
-  const result = { name: '', beats: 0, swing: false, tokens: [], errors: [], warnings: [] };
-  const headerMatch = text.match(/\{riff:\s*([^,}]+)\s*,\s*([\d.]+)\s*(?:,\s*(swing))?\s*\}/i);
+  const result = { name: '', beats: 0, swing: false, instrument: 'uke', tokens: [], errors: [], warnings: [] };
+  const headerMatch = text.match(/\{riff:\s*([^,}]+)\s*,\s*([\d.]+)\s*(?:,\s*(swing))?\s*(?:,\s*instrument:\s*(\w+))?\s*\}/i);
   if (!headerMatch) { result.errors.push('Missing or invalid riff header.'); return result; }
   result.name = headerMatch[1].trim();
   result.beats = parseFloat(headerMatch[2]);
   result.swing = !!headerMatch[3];
+  if (headerMatch[4]) result.instrument = headerMatch[4].toLowerCase();
   if (isNaN(result.beats) || result.beats <= 0) { result.errors.push('Beat count must be a positive number.'); return result; }
   const endMatch = text.match(/\{end_riff\}/i);
   if (!endMatch) { result.errors.push('Missing {end_riff}.'); return result; }
@@ -4090,11 +4143,11 @@ function riffApplySwing(tokens) {
       if (!pairFirst) { pairFirst = t; }
       else { pairFirst.actualDuration = RIFF_SWING_LONG; pairFirst.swung = true; t.actualDuration = RIFF_SWING_SHORT; t.swung = true; pairFirst = null; }
     } else {
-      if (pairFirst) { pairFirst.actualDuration = pairFirst.duration; pairFirst.swung = false; }
+      if (pairFirst) { pairFirst.actualDuration = RIFF_SWING_LONG; pairFirst.swung = true; }
       pairFirst = null; t.actualDuration = t.duration; t.swung = false;
     }
   }
-  if (pairFirst) { pairFirst.actualDuration = pairFirst.duration; pairFirst.swung = false; }
+  if (pairFirst) { pairFirst.actualDuration = RIFF_SWING_LONG; pairFirst.swung = true; }
   let running = 0;
   for (const t of tokens) {
     t.actualStart = running; running += t.actualDuration;
@@ -4182,8 +4235,8 @@ function riffGetFretRange(flat) {
   return { startFret, fretCount };
 }
 
-function riffRenderFretboard(svg, flat) {
-  const strings = RIFF_STRING_ORDER['GCEA'];
+function riffRenderFretboard(svg, flat, tuning) {
+  const strings = RIFF_STRING_ORDER[tuning || 'GCEA'];
   const range = flat ? riffGetFretRange(flat) : { startFret: 1, fretCount: 4 };
   riffFbStartFret = range.startFret;
   riffFbFretCount = range.fretCount;
@@ -4268,6 +4321,7 @@ function riffRenderFretboard(svg, flat) {
       const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       c.setAttribute('cx', x); c.setAttribute('cy', fretTop - 5);
       c.setAttribute('r', DOT_R); c.setAttribute('class', 'riff-fb-dot');
+      c.setAttribute('data-string', sn); c.setAttribute('data-fret', '0');
       svg.appendChild(c);
       riffDotElements[sn + ':0'] = c;
     }
@@ -4277,6 +4331,7 @@ function riffRenderFretboard(svg, flat) {
       const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
       c.setAttribute('cx', x); c.setAttribute('cy', cy);
       c.setAttribute('r', DOT_R); c.setAttribute('class', 'riff-fb-dot');
+      c.setAttribute('data-string', sn); c.setAttribute('data-fret', String(f));
       svg.appendChild(c);
       riffDotElements[sn + ':' + f] = c;
     }
@@ -4338,12 +4393,7 @@ let riffPopupSecPerBeat = 0;
 let riffPopupBPM = 120;
 let currentSongRiffs = {};
 let riffPreRenderedBuffers = {};
-let activeRiffSource = null;
-let activeRiffName = null;
-let activeRiffBeatInRiff = 0;
-let activeRiffJustStarted = false;
-let activeRiffFlat = null;
-let activeRiffData = null;
+let activeRiffs = new Map();
 
 const RIFF_COLORS = [
   { bg: '#e67e22', light: 'rgba(230,126,34,', border: 'rgba(230,126,34,0.45)' },
@@ -4363,8 +4413,32 @@ function buildRiffColorMap(riffs) {
   }
 }
 
+function renderRiffBeatDots(container, beats) {
+  container.innerHTML = '';
+  const count = Math.max(1, Math.ceil(beats));
+  const perRow = count > 8 ? 4 : count;
+  let row = document.createElement('div');
+  row.className = 'riff-beat-dot-row';
+  for (let i = 0; i < count; i++) {
+    if (i > 0 && i % perRow === 0) {
+      container.appendChild(row);
+      row = document.createElement('div');
+      row.className = 'riff-beat-dot-row';
+    }
+    const d = document.createElement('div');
+    d.className = 'riff-beat-dot';
+    row.appendChild(d);
+  }
+  container.appendChild(row);
+}
+
 function getRiffColor(riffName) {
   return riffColorMap[riffName] || RIFF_COLORS[0];
+}
+
+function riffTuningFor(riff) {
+  const INST_TUNING = { bass: 'EADG', baritone: 'DGBE' };
+  return (riff && riff.instrument && INST_TUNING[riff.instrument]) || 'GCEA';
 }
 
 function isRiffAvailable() {
@@ -4378,13 +4452,11 @@ function openRiffPopup(riffName) {
   riffPopupRiff = riff;
   riffPopupFlat = riffFlattenTokens(riff);
   riffActiveColor = getRiffColor(riffName).bg;
-  document.getElementById('riffPopupTitle').textContent = riff.name + ' (' + riff.beats + ' beats' + (riff.swing ? ', swing' : '') + ')';
-  riffRenderFretboard(document.getElementById('riffPopupFretboard'), riffPopupFlat);
-  const beatsEl = document.getElementById('riffPopupBeats');
-  beatsEl.innerHTML = '';
-  for (let i = 0; i < Math.ceil(riff.beats); i++) {
-    const d = document.createElement('div'); d.className = 'riff-beat-dot'; beatsEl.appendChild(d);
-  }
+  const INST_LABELS = { uke: 'Uke', bass: 'Bass', tenor: 'Tenor', baritone: 'Bari' };
+  const instLabel = INST_LABELS[riff.instrument] || riff.instrument || 'Uke';
+  document.getElementById('riffPopupTitle').textContent = riff.name + ' (' + instLabel + ', ' + riff.beats + ' beats' + (riff.swing ? ', swing' : '') + ')';
+  riffRenderFretboard(document.getElementById('riffPopupFretboard'), riffPopupFlat, riffTuningFor(riff));
+  renderRiffBeatDots(document.getElementById('riffPopupBeats'), riff.beats);
   riffPopupBPM = playbackBPM;
   document.getElementById('riffPopupTempoVal').textContent = riffPopupBPM;
   document.querySelector('.riff-popup-tempo').style.display = '';
@@ -4402,6 +4474,33 @@ function closeRiffPopup() {
   document.getElementById('riffPopup').classList.remove('visible');
   document.getElementById('riffPopupOverlay').classList.remove('visible');
   riffPopupRiff = null; riffPopupFlat = null;
+}
+
+function showRiffPicker(anchor, riffNames) {
+  document.querySelectorAll('.riff-picker-dropdown').forEach(d => d.remove());
+  const INST_LABELS = { uke: 'Uke', bass: 'Bass', tenor: 'Tenor', baritone: 'Bari' };
+  const dd = document.createElement('div');
+  dd.className = 'riff-picker-dropdown';
+  for (const rn of riffNames) {
+    const riff = currentSongRiffs[rn];
+    if (!riff) continue;
+    const item = document.createElement('div');
+    item.className = 'riff-picker-item';
+    const rc = getRiffColor(rn);
+    item.style.borderLeft = '3px solid ' + rc.bg;
+    const inst = riff.instrument || 'uke';
+    item.textContent = (INST_LABELS[inst] || inst) + ': ' + rn;
+    item.addEventListener('click', () => { dd.remove(); openRiffPopup(rn); });
+    dd.appendChild(item);
+  }
+  document.body.appendChild(dd);
+  const rect = anchor.getBoundingClientRect();
+  dd.style.position = 'fixed';
+  dd.style.top = (rect.bottom + 4) + 'px';
+  dd.style.left = rect.left + 'px';
+  dd.style.zIndex = '10000';
+  const dismiss = (e) => { if (!dd.contains(e.target)) { dd.remove(); document.removeEventListener('click', dismiss); } };
+  setTimeout(() => document.addEventListener('click', dismiss), 0);
 }
 
 function startRiffPopupPlayback() {
@@ -4474,107 +4573,125 @@ function preRenderSongRiffs() {
   return Promise.all(promises);
 }
 
-let activeRiffStartTime = 0;
-
-let activeRiffLooping = false;
-
-function isRiffStillPlaying() {
-  if (!activeRiffData || !activeRiffSource) return false;
-  if (activeRiffLooping) return true;
-  const secPerBeat = 60 / playbackBPM;
-  const elapsed = getAudioCtx().currentTime - activeRiffStartTime;
-  return elapsed < activeRiffData.beats * secPerBeat;
+function hasBassRiffActive() {
+  for (const [, ar] of activeRiffs) {
+    if (ar.data.instrument === 'bass') return true;
+  }
+  return false;
 }
 
-function startRiffForChord(riffName, chordBeats, forceRestart) {
-  if (activeRiffName === riffName && activeRiffSource && !forceRestart) return;
-  stopActiveRiff();
-  if (!isRiffAvailable()) return;
+function isAnyRiffStillPlaying() {
+  if (activeRiffs.size === 0) return false;
+  for (const [, ar] of activeRiffs) {
+    if (ar.looping) return true;
+    const secPerBeat = 60 / playbackBPM;
+    const elapsed = getAudioCtx().currentTime - ar.startTime;
+    if (elapsed < ar.data.beats * secPerBeat) return true;
+  }
+  return false;
+}
+
+function startRiffsForChord(riffNames, chordBeats, logicalIndex) {
+  if (!isRiffAvailable()) { stopAllActiveRiffs(); return; }
+  const newNames = new Set(riffNames.filter(rn => riffPreRenderedBuffers[rn]));
+  for (const [name, ar] of activeRiffs) {
+    if (!newNames.has(name)) {
+      if (ar.looping) { stopSingleRiff(name); continue; }
+      const secPerBeat = 60 / playbackBPM;
+      const elapsed = getAudioCtx().currentTime - ar.startTime;
+      if (elapsed >= ar.data.beats * secPerBeat) stopSingleRiff(name);
+    }
+  }
+  for (const rn of newNames) {
+    const existing = activeRiffs.get(rn);
+    if (existing) {
+      if (existing.logicalIndex === logicalIndex) continue;
+      stopSingleRiff(rn);
+    }
+    const buf = riffPreRenderedBuffers[rn];
+    if (!buf) continue;
+    const riff = currentSongRiffs[rn];
+    const ctx = getAudioCtx();
+    const source = ctx.createBufferSource();
+    source.buffer = buf;
+    source.loop = false;
+    source.connect(ctx.destination);
+    source.start();
+    activeRiffs.set(rn, {
+      source, flat: riffFlattenTokens(riff), data: riff,
+      beatInRiff: 0, justStarted: false,
+      looping: riff.beats <= chordBeats,
+      startTime: ctx.currentTime,
+      logicalIndex: logicalIndex
+    });
+  }
+  updatePlaybackPopups();
+  updateRiffVisuals();
+}
+
+function triggerRiffBuffer(riffName) {
+  const ar = activeRiffs.get(riffName);
+  if (!ar) return;
+  if (ar.source) { try { ar.source.stop(); } catch(e) {} }
   const buf = riffPreRenderedBuffers[riffName];
   if (!buf) return;
-  const riff = currentSongRiffs[riffName];
-  activeRiffName = riffName;
-  activeRiffFlat = riffFlattenTokens(riff);
-  activeRiffData = riff;
-  activeRiffBeatInRiff = 0;
-  activeRiffJustStarted = false;
-  activeRiffLooping = riff.beats <= chordBeats;
-  activeRiffStartTime = getAudioCtx().currentTime;
-  triggerRiffBuffer();
-  const showRiffs = localStorage.getItem('uke-show-riffs') !== 'false';
-  if (showRiffs) {
-    riffPopupRiff = riff;
-    riffPopupFlat = activeRiffFlat;
-    riffActiveColor = getRiffColor(riffName).bg;
-    document.getElementById('riffPopupTitle').textContent = riff.name;
-    riffRenderFretboard(document.getElementById('riffPopupFretboard'), activeRiffFlat);
-    const beatsEl = document.getElementById('riffPopupBeats');
-    beatsEl.innerHTML = '';
-    for (let i = 0; i < Math.ceil(riff.beats); i++) {
-      const d = document.createElement('div'); d.className = 'riff-beat-dot'; beatsEl.appendChild(d);
-    }
-    document.querySelector('.riff-popup-tempo').style.display = 'none';
-    document.getElementById('riffPopupPlayBtn').style.display = 'none';
-    document.getElementById('riffPopupStopBtn').style.display = 'none';
-    document.getElementById('riffPopupLoop').parentElement.style.display = 'none';
-    const popup = document.getElementById('riffPopup');
-    popup.classList.add('playback-mode');
-    popup.classList.add('visible');
-    document.getElementById('riffPopupOverlay').classList.remove('visible');
-  }
-  updateRiffVisuals();
-}
-
-function triggerRiffBuffer() {
-  if (activeRiffSource) { try { activeRiffSource.stop(); } catch(e) {} }
-  const buf = riffPreRenderedBuffers[activeRiffName];
-  if (!buf) return;
   const ctx = getAudioCtx();
-  activeRiffSource = ctx.createBufferSource();
-  activeRiffSource.buffer = buf;
-  activeRiffSource.loop = false;
-  activeRiffSource.connect(ctx.destination);
-  activeRiffSource.start();
+  ar.source = ctx.createBufferSource();
+  ar.source.buffer = buf;
+  ar.source.loop = false;
+  ar.source.connect(ctx.destination);
+  ar.source.start();
 }
 
-function tickActiveRiff() {
-  if (!activeRiffData) return;
-  if (activeRiffJustStarted) { activeRiffJustStarted = false; return; }
-  activeRiffBeatInRiff++;
-  if (activeRiffBeatInRiff >= activeRiffData.beats) {
-    if (activeRiffLooping) {
-      activeRiffBeatInRiff = 0;
-      activeRiffStartTime = getAudioCtx().currentTime;
-      triggerRiffBuffer();
-    } else {
-      stopActiveRiff();
-      return;
+function tickActiveRiffs() {
+  if (activeRiffs.size === 0) return;
+  const toRemove = [];
+  for (const [name, ar] of activeRiffs) {
+    if (ar.justStarted) { ar.justStarted = false; continue; }
+    ar.beatInRiff++;
+    if (ar.beatInRiff >= ar.data.beats) {
+      if (ar.looping) {
+        ar.beatInRiff = 0;
+        ar.startTime = getAudioCtx().currentTime;
+        triggerRiffBuffer(name);
+      } else {
+        toRemove.push(name);
+      }
     }
   }
-  updateRiffVisuals();
+  for (const name of toRemove) stopSingleRiff(name);
+  if (activeRiffs.size > 0) updateRiffVisuals();
 }
 
 let riffPlaybackAnimId = null;
 
 function updateRiffVisuals() {
-  if (!activeRiffData || !activeRiffFlat) return;
+  if (activeRiffs.size === 0) return;
   if (riffPlaybackAnimId) { cancelAnimationFrame(riffPlaybackAnimId); riffPlaybackAnimId = null; }
-
   function renderFrame() {
-    if (!activeRiffData || !activeRiffFlat) return;
-    const secPerBeat = 60 / playbackBPM;
-    const riffDur = activeRiffData.beats * secPerBeat;
-    const elapsed = getAudioCtx().currentTime - activeRiffStartTime;
-    const pos = ((elapsed % riffDur) + riffDur) % riffDur;
-    const beat = pos / secPerBeat;
-
-    const dots = document.querySelectorAll('#riffPopupBeats .riff-beat-dot');
-    dots.forEach((d, i) => d.classList.toggle('active', i === Math.floor(beat)));
-    riffClearDots();
-    for (const token of activeRiffFlat) {
-      const tStart = token.actualStart, tEnd = tStart + token.actualDuration;
-      if (beat >= tStart && beat < tEnd && token.type === 'note' && token.notes) {
-        for (const n of token.notes) riffActivateDot(n.string, n.fret);
+    if (activeRiffs.size === 0) return;
+    const popups = document.querySelectorAll('.riff-playback-popup');
+    for (const popup of popups) {
+      const rn = popup.dataset.riffName;
+      const ar = activeRiffs.get(rn);
+      if (!ar) continue;
+      const secPerBeat = 60 / playbackBPM;
+      const riffDur = ar.data.beats * secPerBeat;
+      const elapsed = getAudioCtx().currentTime - ar.startTime;
+      const pos = ((elapsed % riffDur) + riffDur) % riffDur;
+      const beat = pos / secPerBeat;
+      const dots = popup.querySelectorAll('.riff-beat-dot');
+      dots.forEach((d, i) => d.classList.toggle('active', i === Math.floor(beat)));
+      const fbDots = popup.querySelectorAll('.riff-fb-dot');
+      fbDots.forEach(d => { d.classList.remove('active', 'active-open', 'fading', 'fading-open'); });
+      for (const token of ar.flat) {
+        const tStart = token.actualStart, tEnd = tStart + token.actualDuration;
+        if (beat >= tStart && beat < tEnd && token.type === 'note' && token.notes) {
+          for (const n of token.notes) {
+            const dot = popup.querySelector('.riff-fb-dot[data-string="' + n.string + '"][data-fret="' + n.fret + '"]');
+            if (dot) dot.classList.add(n.fret === 0 ? 'active-open' : 'active');
+          }
+        }
       }
     }
     riffPlaybackAnimId = requestAnimationFrame(renderFrame);
@@ -4582,15 +4699,73 @@ function updateRiffVisuals() {
   riffPlaybackAnimId = requestAnimationFrame(renderFrame);
 }
 
-function stopActiveRiff() {
+function stopSingleRiff(name) {
+  const ar = activeRiffs.get(name);
+  if (!ar) return;
+  if (ar.source) { try { ar.source.stop(); } catch(e) {} }
+  activeRiffs.delete(name);
+  const popup = document.querySelector('.riff-playback-popup[data-riff-name="' + name + '"]');
+  if (popup) popup.remove();
+}
+
+function stopAllActiveRiffs() {
   if (riffPlaybackAnimId) { cancelAnimationFrame(riffPlaybackAnimId); riffPlaybackAnimId = null; }
-  if (activeRiffSource) { try { activeRiffSource.stop(); } catch(e) {} activeRiffSource = null; }
-  activeRiffName = null; activeRiffFlat = null; activeRiffData = null;
-  activeRiffBeatInRiff = 0; activeRiffLooping = false;
-  riffClearDots();
-  document.querySelectorAll('#riffPopupBeats .riff-beat-dot').forEach(d => d.classList.remove('active'));
+  for (const [, ar] of activeRiffs) {
+    if (ar.source) { try { ar.source.stop(); } catch(e) {} }
+  }
+  activeRiffs.clear();
+  document.querySelectorAll('.riff-playback-popup').forEach(p => p.remove());
   document.getElementById('riffPopup').classList.remove('visible');
   document.getElementById('riffPopupOverlay').classList.remove('visible');
+}
+
+function updatePlaybackPopups() {
+  const showRiffs = localStorage.getItem('uke-show-riffs') !== 'false';
+  if (!showRiffs) {
+    document.querySelectorAll('.riff-playback-popup').forEach(p => p.remove());
+    return;
+  }
+  const existing = new Set();
+  document.querySelectorAll('.riff-playback-popup').forEach(p => {
+    if (!activeRiffs.has(p.dataset.riffName)) p.remove();
+    else existing.add(p.dataset.riffName);
+  });
+  for (const [rn, ar] of activeRiffs) {
+    if (existing.has(rn)) continue;
+    const popup = document.createElement('div');
+    popup.className = 'riff-playback-popup';
+    popup.dataset.riffName = rn;
+    const instrument = ar.data.instrument || 'uke';
+    const INST_LABELS = { uke: 'Uke', bass: 'Bass', tenor: 'Tenor', baritone: 'Bari' };
+    const header = document.createElement('div');
+    header.className = 'riff-popup-header';
+    header.innerHTML = '<span>' + ar.data.name + ' <small style="opacity:0.7">(' + (INST_LABELS[instrument] || instrument) + ')</small></span>';
+    popup.appendChild(header);
+    const body = document.createElement('div');
+    body.className = 'riff-popup-body';
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    riffRenderFretboard(svg, ar.flat, riffTuningFor(ar.data));
+    body.appendChild(svg);
+    const controls = document.createElement('div');
+    controls.className = 'riff-popup-controls';
+    const beatsEl = document.createElement('div');
+    beatsEl.className = 'riff-popup-beats';
+    renderRiffBeatDots(beatsEl, ar.data.beats);
+    controls.appendChild(beatsEl);
+    body.appendChild(controls);
+    popup.appendChild(body);
+    document.body.appendChild(popup);
+  }
+  repositionPlaybackPopups();
+}
+
+function repositionPlaybackPopups() {
+  const popups = document.querySelectorAll('.riff-playback-popup');
+  let bottom = 70;
+  for (let i = popups.length - 1; i >= 0; i--) {
+    popups[i].style.bottom = bottom + 'px';
+    bottom += popups[i].offsetHeight + 8;
+  }
 }
 
 // --- Playback engine (beat-based with metronome) ---
@@ -4752,13 +4927,19 @@ function scheduleCountOff() {
       playbackBeatInMeasure = 0;
       updateBeatDisplay();
       playClick(true);
-      playBass();
       playDrumBeat();
-      // Start riff now that count-off is done
       if (playbackIndex < playbackElements.length) {
-        const rn = playbackElements[playbackIndex].element.dataset.riffName;
-        if (rn && riffPreRenderedBuffers[rn]) startRiffForChord(rn, playbackElements[playbackIndex].beats);
+        const el = playbackElements[playbackIndex].element;
+        const rns = (el.dataset.riffNames || '').split(',').filter(Boolean);
+        const li = parseInt(el.dataset.logicalIndex) || 0;
+        let tcb = 0;
+        for (let i = playbackIndex; i < playbackElements.length; i++) {
+          if ((parseInt(playbackElements[i].element.dataset.logicalIndex) || 0) !== li) break;
+          tcb += playbackElements[i].beats;
+        }
+        if (rns.length) startRiffsForChord(rns, tcb, li);
       }
+      if (!hasBassRiffActive()) playBass();
       scheduleBeatTick();
     }
   }, ms);
@@ -4767,7 +4948,7 @@ function scheduleCountOff() {
 function stopPlayback() {
   if (playbackTimeout) { clearTimeout(playbackTimeout); playbackTimeout = null; }
   playbackInCountOff = false;
-  stopActiveRiff();
+  stopAllActiveRiffs();
   riffPreRenderedBuffers = {};
   document.querySelectorAll('.chord-playing').forEach(el => el.classList.remove('chord-playing'));
   const marker = document.querySelector('.coda-marker');
@@ -4796,14 +4977,37 @@ function highlightCurrentChord() {
   document.getElementById('floatChordName').textContent = name;
   current.element.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-  const riffName = current.element.dataset.riffName;
-  if (!playbackInCountOff && riffName && riffPreRenderedBuffers[riffName]) {
-    const wasActive = activeRiffName;
-    const restart = riffName === activeRiffName;
-    startRiffForChord(riffName, current.beats, restart);
-    if (insideBeatTick && (activeRiffName !== wasActive || restart)) activeRiffJustStarted = true;
-  } else if (!playbackInCountOff && !isRiffStillPlaying()) {
-    stopActiveRiff();
+  const riffNames = (current.element.dataset.riffNames || '').split(',').filter(Boolean);
+  const validRiffs = riffNames.filter(rn => riffPreRenderedBuffers[rn]);
+  const logicalIdx = parseInt(current.element.dataset.logicalIndex) || 0;
+  if (!playbackInCountOff && validRiffs.length > 0) {
+    let totalChordBeats = 0;
+    for (let i = playbackIndex; i < playbackElements.length; i++) {
+      const li = parseInt(playbackElements[i].element.dataset.logicalIndex) || 0;
+      if (li !== logicalIdx) break;
+      totalChordBeats += playbackElements[i].beats;
+    }
+    const beforeRiffs = new Set(activeRiffs.keys());
+    startRiffsForChord(validRiffs, totalChordBeats, logicalIdx);
+    if (insideBeatTick) {
+      for (const rn of validRiffs) {
+        if (beforeRiffs.has(rn)) continue;
+        const ar = activeRiffs.get(rn);
+        if (ar) ar.justStarted = true;
+      }
+    }
+  } else if (!playbackInCountOff && activeRiffs.size > 0) {
+    const toStop = [];
+    for (const [name, ar] of activeRiffs) {
+      if (ar.looping) { toStop.push(name); continue; }
+      const secPerBeat = 60 / playbackBPM;
+      const elapsed = getAudioCtx().currentTime - ar.startTime;
+      if (elapsed >= ar.data.beats * secPerBeat) toStop.push(name);
+    }
+    for (const name of toStop) stopSingleRiff(name);
+    if (activeRiffs.size === 0) {
+      document.querySelectorAll('.riff-playback-popup').forEach(p => p.remove());
+    }
   }
 
   if (currentTuning === 'BOTH' && altPlaybackElements.length) {
@@ -4855,9 +5059,9 @@ function scheduleBeatTick() {
     }
 
     playClick(playbackBeatInMeasure === 0);
-    playBass();
+    if (!hasBassRiffActive()) playBass();
     playDrumBeat();
-    tickActiveRiff();
+    tickActiveRiffs();
     updateBeatDisplay();
     insideBeatTick = false;
     scheduleBeatTick();
@@ -5809,7 +6013,10 @@ function parseChordPro(text) {
     if (riffBuffer) {
       if (/^\{end_riff\}$/i.test(line)) {
         const riffText = '{riff: ' + riffBuffer.header + '}\n' + riffBuffer.lines.join('\n') + '\n{end_riff}';
-        const parsed = parseRiff(riffText, 'GCEA');
+        const instMatch = riffBuffer.header.match(/instrument:\s*(\w+)/i);
+        const INST_TUNING = { bass: 'EADG', baritone: 'DGBE' };
+        const riffTuning = (instMatch && INST_TUNING[instMatch[1].toLowerCase()]) || 'GCEA';
+        const parsed = parseRiff(riffText, riffTuning);
         if (parsed.name) result.riffs[parsed.name] = parsed;
         riffBuffer = null;
       } else {
@@ -5858,24 +6065,28 @@ function parseChordPro(text) {
 
     if (line.includes('[')) {
       const segments = [];
-      const tokenRegex = /\[([^\],:]+)(?:,(\d+))?(?::(\d+(?:\.\d+)?))?(?:,(\d+))?(?::([a-z_]\w*))?\]|\{to_coda\}/gi;
+      const tokenRegex = /\[([^\],:]+)(?:,(\d+))?(?::(\d+(?:\.\d+)?))?(?:,(\d+))?(?::([a-z_][\w,]*))?(?::([a-z_][\w,]*))?\]|\{to_coda\}/gi;
       let last = 0;
       let m;
       while ((m = tokenRegex.exec(line)) !== null) {
         const textBefore = line.substring(last, m.index);
         if (textBefore) {
-          segments.push({ chord: null, beats: 0, voicingIndex: 0, riffName: null, text: textBefore });
+          segments.push({ chord: null, beats: 0, voicingIndex: 0, riffNames: [], text: textBefore });
         }
         if (m[0].toLowerCase() === '{to_coda}') {
-          segments.push({ chord: null, beats: 0, voicingIndex: 0, riffName: null, text: '', marker: 'to_coda' });
+          segments.push({ chord: null, beats: 0, voicingIndex: 0, riffNames: [], text: '', marker: 'to_coda' });
         } else {
           const rawChord = m[1];
           const isInserted = rawChord.startsWith('!');
+          const riffStr = m[5] || '';
+          const riffStr2 = m[6] || '';
+          const allRiffParts = [riffStr, riffStr2].filter(Boolean).join(',');
+          const riffNames = allRiffParts ? allRiffParts.split(',').filter(Boolean) : [];
           segments.push({
             chord: isInserted ? rawChord.substring(1) : rawChord,
             beats: m[3] ? parseFloat(m[3]) : 0,
             voicingIndex: m[2] ? parseInt(m[2]) : (m[4] ? parseInt(m[4]) : 0),
-            riffName: m[5] || null,
+            riffNames,
             text: '',
             inserted: isInserted
           });
@@ -5888,7 +6099,7 @@ function parseChordPro(text) {
         if (lastSeg.chord) {
           lastSeg.text = trailing;
         } else {
-          segments.push({ chord: null, beats: 0, voicingIndex: 0, riffName: null, text: trailing });
+          segments.push({ chord: null, beats: 0, voicingIndex: 0, riffNames: [], text: trailing });
         }
       }
       for (let i = 0; i < segments.length - 1; i++) {
@@ -5914,7 +6125,7 @@ function parseChordPro(text) {
   for (const line of result.lines) {
     if (line.type !== 'chordline') continue;
     for (const seg of line.segments) {
-      if (seg.riffName) referencedRiffs.add(seg.riffName);
+      if (seg.riffNames) for (const rn of seg.riffNames) referencedRiffs.add(rn);
     }
   }
   for (const name of referencedRiffs) {
@@ -6437,7 +6648,8 @@ function renderLyrics(song, semitones, useFlats, output) {
         pair.setAttribute('data-chord-name', transposed);
         pair.setAttribute('data-voicing-index', vi);
         pair.setAttribute('data-tuning', currentTuning);
-        if (seg.riffName) pair.setAttribute('data-riff-name', seg.riffName);
+        const segRiffNames = (seg.riffNames || []).filter(rn => song.riffs && song.riffs[rn]);
+        if (segRiffNames.length) pair.setAttribute('data-riff-names', segRiffNames.join(','));
         playIndex++;
         if (anticipate) pair.classList.add('chord-anticipate');
         if (vi !== (seg.voicingIndex || 0)) pair.classList.add('voicing-overridden');
@@ -6458,17 +6670,24 @@ function renderLyrics(song, semitones, useFlats, output) {
           chordSpan.textContent = transposed;
           pair.appendChild(chordSpan);
         }
-        if (seg.riffName && song.riffs && song.riffs[seg.riffName]) {
-          const rc = getRiffColor(seg.riffName);
+        if (segRiffNames.length > 0) {
           const riffIcon = document.createElement('span');
           riffIcon.className = 'riff-indicator';
           if (!isRiffAvailable()) {
             riffIcon.classList.add('disabled');
             riffIcon.title = 'Riff available in original key (GCEA, no transpose)';
           } else {
+            const rc = getRiffColor(segRiffNames[0]);
             riffIcon.style.background = rc.bg;
-            riffIcon.title = 'Click to view riff: ' + seg.riffName;
-            riffIcon.addEventListener('click', (e) => { e.stopPropagation(); openRiffPopup(seg.riffName); });
+            riffIcon.title = 'Click to view riff';
+            riffIcon.addEventListener('click', (e) => {
+              e.stopPropagation();
+              if (segRiffNames.length === 1) {
+                openRiffPopup(segRiffNames[0]);
+              } else {
+                showRiffPicker(riffIcon, segRiffNames);
+              }
+            });
           }
           riffIcon.textContent = 'RIFF';
           pair.appendChild(riffIcon);
@@ -6551,7 +6770,7 @@ function renderGrid(song, semitones, useFlats, output) {
           if (!hasBeats) hasMissingBeats = true;
           const thisLogical = logicalChordIndex++;
           const vi = resolveVoicingIndex(activeSongId, currentTuning, semitones, name, thisLogical, seg.voicingIndex);
-          const chordObj = { name, beats, hasBeats, text: seg.text || '', voicingIndex: vi, textFileVI: seg.voicingIndex, logicalIndex: thisLogical, inserted: seg.inserted, riffName: seg.riffName };
+          const chordObj = { name, beats, hasBeats, text: seg.text || '', voicingIndex: vi, textFileVI: seg.voicingIndex, logicalIndex: thisLogical, inserted: seg.inserted, riffNames: seg.riffNames || [] };
           if (gridCodaMarkerPending) { chordObj.codaMarkerBefore = true; gridCodaMarkerPending = false; }
           lineChords.push(chordObj);
           foundChord = true;
@@ -6622,21 +6841,24 @@ function renderGrid(song, semitones, useFlats, output) {
       }
     }
 
-    let spanRiff = null, spanRemaining = 0;
+    const spanRiffs = new Map();
     for (const ch of allChords) {
-      if (ch.riffName && song.riffs && song.riffs[ch.riffName]) {
-        const riffBeats = song.riffs[ch.riffName].beats;
+      const validRiffs = (ch.riffNames || []).filter(rn => song.riffs && song.riffs[rn]);
+      for (const rn of validRiffs) {
+        const riffBeats = song.riffs[rn].beats;
         if (riffBeats > ch.beats) {
-          spanRiff = ch.riffName;
-          spanRemaining = riffBeats - ch.beats;
+          spanRiffs.set(rn, riffBeats - ch.beats);
         } else {
-          spanRiff = null;
-          spanRemaining = 0;
+          spanRiffs.delete(rn);
         }
-      } else if (spanRiff && spanRemaining > 0) {
-        ch._spanRiffName = spanRiff;
-        spanRemaining -= ch.beats;
-        if (spanRemaining <= 0) { spanRiff = null; spanRemaining = 0; }
+      }
+      if (!validRiffs.length && spanRiffs.size > 0) {
+        ch._spanRiffNames = [...spanRiffs.keys()];
+        for (const [rn, rem] of spanRiffs) {
+          const newRem = rem - ch.beats;
+          if (newRem <= 0) spanRiffs.delete(rn);
+          else spanRiffs.set(rn, newRem);
+        }
       }
     }
 
@@ -6719,15 +6941,16 @@ function renderGrid(song, semitones, useFlats, output) {
         cell.setAttribute('data-chord-name', ch.name);
         cell.setAttribute('data-voicing-index', ch.voicingIndex);
         cell.setAttribute('data-tuning', currentTuning);
-        if (ch.riffName) cell.setAttribute('data-riff-name', ch.riffName);
+        const cellRiffNames = (ch.riffNames || []).filter(rn => song.riffs && song.riffs[rn]);
+        if (cellRiffNames.length) cell.setAttribute('data-riff-names', cellRiffNames.join(','));
         playIndex++;
         if (!ch.hasBeats) cell.classList.add('no-beats');
         if (take < 1) cell.classList.add('half-beat');
         cell.style.flex = take;
         if (ch.voicingIndex !== (ch.textFileVI || 0)) cell.classList.add('voicing-overridden');
-        const riffColorName = (ch.riffName && song.riffs && song.riffs[ch.riffName]) ? ch.riffName : ch._spanRiffName;
-        if (riffColorName) {
-          const rc = getRiffColor(riffColorName);
+        const riffColorNames = cellRiffNames.length ? cellRiffNames : (ch._spanRiffNames || []);
+        if (riffColorNames.length) {
+          const rc = getRiffColor(riffColorNames[0]);
           cell.classList.add('riff-span');
           cell.style.setProperty('--riff-bg', 'linear-gradient(180deg, ' + rc.light + '0.10) 0%, ' + rc.light + '0.03) 100%)');
           cell.style.setProperty('--riff-border', rc.border);
@@ -6747,8 +6970,8 @@ function renderGrid(song, semitones, useFlats, output) {
         } else {
           cell.textContent = ch.name;
         }
-        if (ch.riffName && song.riffs && song.riffs[ch.riffName] && remaining === ch.beats) {
-          const rc = getRiffColor(ch.riffName);
+        if (cellRiffNames.length && remaining === ch.beats) {
+          const rc = getRiffColor(cellRiffNames[0]);
           const riffIcon = document.createElement('span');
           riffIcon.className = 'riff-indicator';
           if (!isRiffAvailable()) {
@@ -6756,8 +6979,15 @@ function renderGrid(song, semitones, useFlats, output) {
             riffIcon.title = 'Riff available in original key (GCEA, no transpose)';
           } else {
             riffIcon.style.background = rc.bg;
-            riffIcon.title = 'Click to view riff: ' + ch.riffName;
-            riffIcon.addEventListener('click', (e) => { e.stopPropagation(); openRiffPopup(ch.riffName); });
+            riffIcon.title = 'Click to view riff';
+            riffIcon.addEventListener('click', (e) => {
+              e.stopPropagation();
+              if (cellRiffNames.length === 1) {
+                openRiffPopup(cellRiffNames[0]);
+              } else {
+                showRiffPicker(riffIcon, cellRiffNames);
+              }
+            });
           }
           riffIcon.textContent = 'RIFF';
           cell.appendChild(riffIcon);

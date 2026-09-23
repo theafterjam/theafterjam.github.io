@@ -159,7 +159,8 @@
     font-size: 0.85em;
     color: #666;
   }
-  .beat-dots { display: flex; gap: 6px; }
+  .beat-dots { display: flex; flex-direction: column; gap: 4px; align-items: center; }
+  .beat-dot-row { display: flex; gap: 6px; }
   .beat-dot {
     width: 12px;
     height: 12px;
@@ -236,6 +237,7 @@
     <select id="tuningSelect" onchange="onTuningChange()">
       <option value="GCEA">Low G (GCEA)</option>
       <option value="DGBE">Baritone (DGBE)</option>
+      <option value="EADG">Bass (EADG)</option>
     </select>
   </div>
   <span style="margin-left:auto;font-size:0.7em;opacity:0.5" id="versionLabel"></span>
@@ -308,12 +310,14 @@ C0:0.5 C2:0.5 E0:0.5 E1:0.5 E3:0.5 A0:0.5 A2:0.5 A3:0.5
 
 const OPEN_STRING_MIDI = {
   GCEA: { G: 55, C: 60, E: 64, A: 69 },  // Low G tuning: G3, C4, E4, A4
-  DGBE: { D: 50, G: 55, B: 59, E: 64 }
+  DGBE: { D: 50, G: 55, B: 59, E: 64 },
+  EADG: { E: 40, A: 45, D: 50, G: 55 }   // Bass ukulele: E1, A1, D2, G2
 };
 
 const STRING_ORDER = {
   GCEA: ['G', 'C', 'E', 'A'],
-  DGBE: ['D', 'G', 'B', 'E']
+  DGBE: ['D', 'G', 'B', 'E'],
+  EADG: ['E', 'A', 'D', 'G']
 };
 
 const SWING_LONG = 2 / 3;
@@ -344,7 +348,8 @@ const EXAMPLES = {
   'Jazz Lick (swing)': '{riff: jazz_lick, 4, swing}\nR:1 A3:0.5 E2:0.5 C0:0.5 G2:0.5 E3:1\n{end_riff}',
   'Triplet Pattern': '{riff: triplet_demo, 4}\nA3:1 3(E2 C0 G2):1 A5:1 R:1\n{end_riff}',
   'Double Stops': '{riff: double_stops, 6}\nG4+C2:2 C0+E0:1 C2+E1:2 C0+E0:1\n{end_riff}',
-  'Swing with Rests': '{riff: swing_rest, 4, swing}\nA3:0.5 R:0.5 E2:0.5 A0:0.5 C0:1 R:1\n{end_riff}'
+  'Swing with Rests': '{riff: swing_rest, 4, swing}\nA3:0.5 R:0.5 E2:0.5 A0:0.5 C0:1 R:1\n{end_riff}',
+  'Bass Riff (So What)': '{riff: bass_head, 4, instrument:bass}\nE7:1 A7:1 D5:0.5 D7:0.5 R:1\n{end_riff}'
 };
 
 function initExamples() {
@@ -357,26 +362,35 @@ function initExamples() {
   }
 }
 
+const EXAMPLE_TUNINGS = {
+  'Bass Riff (So What)': 'EADG'
+};
+
 function loadExample(name) {
   if (!name || !EXAMPLES[name]) return;
   document.getElementById('riffInput').value = EXAMPLES[name];
   document.getElementById('exampleSelect').value = '';
+  if (EXAMPLE_TUNINGS[name]) {
+    document.getElementById('tuningSelect').value = EXAMPLE_TUNINGS[name];
+    onTuningChange();
+  }
   parseAndDisplay();
 }
 
 // === Parser ===
 
 function parseRiff(text, tuning) {
-  const result = { name: '', beats: 0, swing: false, tokens: [], errors: [], warnings: [] };
+  const result = { name: '', beats: 0, swing: false, instrument: 'uke', tokens: [], errors: [], warnings: [] };
 
-  const headerMatch = text.match(/\{riff:\s*([^,}]+)\s*,\s*([\d.]+)\s*(?:,\s*(swing))?\s*\}/i);
+  const headerMatch = text.match(/\{riff:\s*([^,}]+)\s*,\s*([\d.]+)\s*(?:,\s*(swing))?\s*(?:,\s*instrument:\s*(\w+))?\s*\}/i);
   if (!headerMatch) {
-    result.errors.push('Missing or invalid riff header. Expected: {riff: name, beats, [swing]}');
+    result.errors.push('Missing or invalid riff header. Expected: {riff: name, beats, [swing], [instrument:type]}');
     return result;
   }
   result.name = headerMatch[1].trim();
   result.beats = parseFloat(headerMatch[2]);
   result.swing = !!headerMatch[3];
+  if (headerMatch[4]) result.instrument = headerMatch[4].toLowerCase();
   if (isNaN(result.beats) || result.beats <= 0) {
     result.errors.push('Beat count must be a positive number.');
     return result;
@@ -574,8 +588,8 @@ function applySwing(tokens) {
       }
     } else {
       if (pairFirst) {
-        pairFirst.actualDuration = pairFirst.duration;
-        pairFirst.swung = false;
+        pairFirst.actualDuration = SWING_LONG;
+        pairFirst.swung = true;
       }
       pairFirst = null;
       t.actualDuration = t.duration;
@@ -584,8 +598,8 @@ function applySwing(tokens) {
   }
 
   if (pairFirst) {
-    pairFirst.actualDuration = pairFirst.duration;
-    pairFirst.swung = false;
+    pairFirst.actualDuration = SWING_LONG;
+    pairFirst.swung = true;
   }
 
   let running = 0;
@@ -835,11 +849,20 @@ function renderBeatDots(beats) {
   const container = document.getElementById('beatDots');
   container.innerHTML = '';
   const count = Math.max(1, Math.ceil(beats));
+  const perRow = count > 8 ? 4 : count;
+  let row = document.createElement('div');
+  row.className = 'beat-dot-row';
   for (let i = 0; i < count; i++) {
+    if (i > 0 && i % perRow === 0) {
+      container.appendChild(row);
+      row = document.createElement('div');
+      row.className = 'beat-dot-row';
+    }
     const dot = document.createElement('div');
     dot.className = 'beat-dot';
-    container.appendChild(dot);
+    row.appendChild(dot);
   }
+  container.appendChild(row);
   document.getElementById('beatLabel').textContent = 'Beat: — / ' + beats;
 }
 
