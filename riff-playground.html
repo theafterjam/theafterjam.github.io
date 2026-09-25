@@ -590,10 +590,13 @@ function applySwing(tokens) {
       if (pairFirst) {
         pairFirst.actualDuration = SWING_LONG;
         pairFirst.swung = true;
+        t.actualDuration = t.duration - (SWING_LONG - 0.5);
+        t.swung = false;
+      } else {
+        t.actualDuration = t.duration;
+        t.swung = false;
       }
       pairFirst = null;
-      t.actualDuration = t.duration;
-      t.swung = false;
     }
   }
 

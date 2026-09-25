@@ -4143,8 +4143,13 @@ function riffApplySwing(tokens) {
       if (!pairFirst) { pairFirst = t; }
       else { pairFirst.actualDuration = RIFF_SWING_LONG; pairFirst.swung = true; t.actualDuration = RIFF_SWING_SHORT; t.swung = true; pairFirst = null; }
     } else {
-      if (pairFirst) { pairFirst.actualDuration = RIFF_SWING_LONG; pairFirst.swung = true; }
-      pairFirst = null; t.actualDuration = t.duration; t.swung = false;
+      if (pairFirst) {
+        pairFirst.actualDuration = RIFF_SWING_LONG; pairFirst.swung = true;
+        t.actualDuration = t.duration - (RIFF_SWING_LONG - 0.5); t.swung = false;
+      } else {
+        t.actualDuration = t.duration; t.swung = false;
+      }
+      pairFirst = null;
     }
   }
   if (pairFirst) { pairFirst.actualDuration = RIFF_SWING_LONG; pairFirst.swung = true; }
@@ -4612,35 +4617,22 @@ function startRiffsForChord(riffNames, chordBeats, logicalIndex) {
     if (!buf) continue;
     const riff = currentSongRiffs[rn];
     const ctx = getAudioCtx();
+    const shouldLoop = riff.beats <= chordBeats;
     const source = ctx.createBufferSource();
     source.buffer = buf;
-    source.loop = false;
+    source.loop = shouldLoop;
     source.connect(ctx.destination);
     source.start();
     activeRiffs.set(rn, {
       source, flat: riffFlattenTokens(riff), data: riff,
-      beatInRiff: 0, justStarted: false,
-      looping: riff.beats <= chordBeats,
-      startTime: ctx.currentTime,
+      beatInRiff: 0, justStarted: insideBeatTick,
+      looping: shouldLoop,
+      startTime: ctx.currentTime, cycleCount: 0,
       logicalIndex: logicalIndex
     });
   }
   updatePlaybackPopups();
   updateRiffVisuals();
-}
-
-function triggerRiffBuffer(riffName) {
-  const ar = activeRiffs.get(riffName);
-  if (!ar) return;
-  if (ar.source) { try { ar.source.stop(); } catch(e) {} }
-  const buf = riffPreRenderedBuffers[riffName];
-  if (!buf) return;
-  const ctx = getAudioCtx();
-  ar.source = ctx.createBufferSource();
-  ar.source.buffer = buf;
-  ar.source.loop = false;
-  ar.source.connect(ctx.destination);
-  ar.source.start();
 }
 
 function tickActiveRiffs() {
@@ -4652,8 +4644,6 @@ function tickActiveRiffs() {
     if (ar.beatInRiff >= ar.data.beats) {
       if (ar.looping) {
         ar.beatInRiff = 0;
-        ar.startTime = getAudioCtx().currentTime;
-        triggerRiffBuffer(name);
       } else {
         toRemove.push(name);
       }
@@ -4775,6 +4765,7 @@ let playbackBeatInMeasure = 0;
 let playbackBeatInChord = 0;
 let playbackInCountOff = false;
 let insideBeatTick = false;
+let nextBeatTime = 0;
 
 function getAudioCtx() {
   if (!audioCtx) {
@@ -4926,6 +4917,7 @@ function scheduleCountOff() {
       playbackInCountOff = false;
       playbackBeatInMeasure = 0;
       updateBeatDisplay();
+      nextBeatTime = getAudioCtx().currentTime;
       playClick(true);
       playDrumBeat();
       if (playbackIndex < playbackElements.length) {
@@ -4987,15 +4979,7 @@ function highlightCurrentChord() {
       if (li !== logicalIdx) break;
       totalChordBeats += playbackElements[i].beats;
     }
-    const beforeRiffs = new Set(activeRiffs.keys());
     startRiffsForChord(validRiffs, totalChordBeats, logicalIdx);
-    if (insideBeatTick) {
-      for (const rn of validRiffs) {
-        if (beforeRiffs.has(rn)) continue;
-        const ar = activeRiffs.get(rn);
-        if (ar) ar.justStarted = true;
-      }
-    }
   } else if (!playbackInCountOff && activeRiffs.size > 0) {
     const toStop = [];
     for (const [name, ar] of activeRiffs) {
@@ -5043,7 +5027,10 @@ function updateBeatDisplay() {
 }
 
 function scheduleBeatTick() {
-  const ms = (1 / playbackBPM) * 60000;
+  const secPerBeat = 60 / playbackBPM;
+  nextBeatTime += secPerBeat;
+  const now = getAudioCtx().currentTime;
+  const delay = Math.max(0, (nextBeatTime - now) * 1000);
   playbackTimeout = setTimeout(() => {
     insideBeatTick = true;
     playbackBeatInChord++;
@@ -5065,7 +5052,7 @@ function scheduleBeatTick() {
     updateBeatDisplay();
     insideBeatTick = false;
     scheduleBeatTick();
-  }, ms);
+  }, delay);
 }
 
 function advancePlayback() {
