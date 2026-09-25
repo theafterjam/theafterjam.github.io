@@ -1,0 +1,17 @@
+{title: Watermelon Man (HeadHunters)}
+{artist: Herbie Hancock}
+{rhythm: headhunters}
+
+{riff: bass_riff_F7, 4, instrument: bass}
+E1:0.25 R:0.5 E11+G12:0.5 R:0.25 E12+G13:1 E13+G14:1 R:0.25 E0:0.25
+{end_riff}
+
+{riff: bass_Bb7, 4, instrument: bass}
+A1:0.25 R:0.5 E4+G5:0.5 R:0.25 E5+G6:1 E6+G7:1 R:0.25 A0:0.25
+{end_riff}
+
+[F7:16:bass_riff_F7]
+[Bb7:8:bass_Bb7][F7:8:bass_riff_F7]
+[C7:4][Bb7:4][C7:4][Bb7:4]
+[C7:4][Bb7:4][Ab7:8]
+[Ab7:16]

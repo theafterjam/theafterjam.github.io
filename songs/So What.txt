@@ -23,8 +23,12 @@ R:2 G2+C2+E3+A2:1.5 G0+C0+E1+A0:0.5
 {riff: response_eb, 4, swing, instrument:uke}
 R:2 G3+C3+E4+A3:1.5 G1+C1+E2+A1:0.5
 {end_riff}
-[NC:12][Dm7:4:bass_head]
+{Intro:}
+[Dm7:4:bass_head]
+{Verse:}
 [Dm7:4:response][Dm7:4][Dm7:4:response][Dm7:4][Dm7:4:response][Dm7:4][Dm7:4:response][Dm7:4:bass_head]
 [Dm7:4:response][Dm7:4][Dm7:4:response][Dm7:4][Dm7:4:response][Dm7:4][Dm7:4:response][Dm7:4:bass_head_eb]
 [Ebm7:4:response_eb][Ebm7:4][Ebm7:4:response_eb][Ebm7:4][Ebm7:4:response_eb][Ebm7:4][Ebm7:4:response_eb][Ebm7:4:bass_head]
-[Dm7:4:response][Dm7:4][Dm7:4:response][Dm7:4][Dm7:4:response][Dm7:4][Dm7:4:response][Dm7:4]
+[Dm7:4:response][Dm7:4][Dm7:4:response][Dm7:4][Dm7:4:response][Dm7:4][Dm7:4:response]{to_coda}[Dm7:4:bass_head]
+{CODA:}
+[Dm7:4]

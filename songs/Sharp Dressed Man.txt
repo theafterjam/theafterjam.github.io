@@ -1,8 +1,13 @@
 {title: Sharp Dressed Man}
 {artist: 8 1/2 Souvenirs}
 {time: 4/4}
+
+{riff: riff_Cm, 8, swing}
+R:1 G5+C5:1 G3+C3:0.5 G0+C0:1.5 G5+C5:1 G3+C3:0.5 G0+C0:2.5
+{end_riff}
+
 {Intro:}
-[Cm:32]
+[Cm:32:riff_Cm]
 {Verse 1:}
 [Cm6:8] Clean shirt, new shoes
 [Bb7:4] And he don't know where I am [F7:4]goin' to
@@ -11,7 +16,7 @@
 [G7#9:8] They come runnin' just as fast as they can
 Cause [Cm:8](Break) every girl is crazy 'bout a sharp dressed man
 {Short break}
-[Cm:16] x16
+[Cm:16:riff_Cm] x16
 {Verse 2:}
 [Cm6:8] Gold watch, diamond ring
 [Bb7:4] He ain't missin' not a [F7:4]single thing
@@ -23,7 +28,7 @@ Cause [Cm:8](Break) every girl is crazy 'bout a sharp dressed man
 [Cm:16] [Fm:8] [Cm:8] [G7#9:8] [Cm:8]
 [Cm:16] [Fm:8] [Cm:8] [G7#9:8] [Cm:8]
 {Short break:}
-[Cm:16] x16
+[Cm:16:riff_Cm] x16
 {Verse 3:}
 [Cm6:8] Top coat, top hat
 [Bb7:4] He don't worry 'cause his [F7:4]wallet's fat
@@ -35,4 +40,4 @@ Cause [Cm:8](Break) every girl is crazy 'bout a sharp dressed man
 [G7#9:8] They come runnin' just as fast as they can
 Cause [Cm:8](Break) every girl is crazy 'bout a sharp dressed man
 {Outro:}
-[Cm:32]
+[Cm:32:riff_Cm]
