@@ -1,6 +1,8 @@
 {title: Cheek To Cheek}
 {artist: Irving Berlin}
 {time: 4/4}
+{Intro:}
+[Gmaj7:2] [Abdim7:2] [Am7:2] [D7:2] [Gmaj7:2] [Abdim7:2] [Am7:2] [D7:2]
 {Verse 1:}
 [Gmaj7:2]Heaven,[Abdim7:2] [Am7:2] [D7:2]I'm in [Gmaj7:2]Heaven..[Abdim7:2].. [Am7:2] [D7:2]
 and my [Gmaj7:2]heart beats [Am7:2]so that [Bbdim7:2]I can [Bm7:2]hardly [F7#11:4]speak.[E7:2]
@@ -25,4 +27,7 @@ the [Am7b5:4]charms about you [D7:2][Ebdim7:2] will [Em7:4]carry me [Am7:2]throu
 [Gmaj7:2]Heaven,[Abdim7:2] [Am7:2] [D7:2]I'm in [Gmaj7:2]Heaven..[Abdim7:2].. [Am7:2] [D7:2]
 and my [Gmaj7:2]heart beats [Am7:2]so that [Bbdim7:2]I can [Bm7:2]hardly [F7#11:4]speak.[E7:2]
 [A7:2]And I [D7:2]seem to [Am7:2]find the [Bm7:2]happin[C7:2]ess I [F7#11:4]seek...[E7:4]
-when we're [Am7:4]out together [D7:4]dancing cheek to [Bm7:2]cheek.[E7:2][Am7:2][D7:2]
+when we're [Am7:4]out together [D7:4]dancing cheek to {to_coda} [Bm7:2]cheek.[E7:2][Am7:2][D7:2]
+{CODA:}
+[Gmaj7:2]cheek [Abdim7:2] [Am7:2] [D7:2]Cheek to [Gmaj7:2]cheek [Abdim7:2] [Am7:2] [D7:2]Cheek to
+[Gmaj7:2]cheek [Abdim7:2] [Am7:2] [D7:2]Cheek to [Gmaj7:8]cheek
