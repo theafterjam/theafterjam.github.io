@@ -367,12 +367,12 @@
   .ireal-cell { padding: 0.5em 0.35em; font-weight: 700; font-size: 1.05em; color: var(--accent); min-height: 2.5em; display: flex; align-items: center; justify-content: flex-start; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
   .ireal-cell.half-beat { font-size: 0.85em; padding: 0.5em 0.15em; }
   .ireal-cell.no-beats { color: #c0392b; background: #fdf2f2; }
-  .ireal-grid.chart-mode .ireal-cell { min-height: 5em; flex-direction: column; align-items: flex-start; justify-content: flex-start; padding-top: 0.2em; padding-bottom: 0; }
+  .ireal-grid.chart-mode .ireal-cell { min-height: 4em; flex-direction: column; align-items: flex-start; justify-content: flex-start; padding-top: 0.2em; padding-bottom: 0; }
   .ireal-cell-label { font-size: 0.9em; font-weight: 700; color: var(--accent); white-space: nowrap; margin-left: 0.3em; line-height: 1; }
-  .ireal-cell-diagram { width: 3.5em; height: auto; display: block; margin-top: -0.4em; margin-left: -0.3em; }
+  .ireal-cell-diagram { width: 2.8em; height: auto; display: block; margin-top: -0.4em; margin-left: -0.3em; }
   .ireal-lyric-row { display: flex; position: relative; }
   .ireal-lyric-measure { display: flex; flex: 1 1 0; }
-  .ireal-lyric-cell { font-size: 0.7em; color: #222; padding: 0 0.25em 0.1em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: -0.3em; }
+  .ireal-lyric-cell { font-size: 0.85em; color: #222; padding: 0 0.25em 0.1em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: -0.3em; }
   .ireal-lyric-leading { color: #222; text-align: right; }
   .ireal-lyric-left { position: absolute; right: 100%; padding-right: 0.4em; font-size: 0.8em; color: #222; white-space: nowrap; text-align: right; }
 
@@ -7466,6 +7466,7 @@ function renderGrid(song, semitones, useFlats, output) {
   container.className = 'ireal-container';
 
   const spanRiffs = new Map();
+  let prevSectionLastLyricCell = null;
   for (const section of sections) {
     const sectionDiv = document.createElement('div');
     sectionDiv.className = 'ireal-section';
@@ -7562,7 +7563,7 @@ function renderGrid(song, semitones, useFlats, output) {
       }
     }
 
-    let lastLyricCell = null;
+    let lastLyricCell = prevSectionLastLyricCell;
     for (const ch of allChords) {
       if (ch.codaMarkerBefore) {
         const marker = document.createElement('span');
@@ -7664,9 +7665,29 @@ function renderGrid(song, semitones, useFlats, output) {
           const lyricCell = document.createElement('div');
           lyricCell.className = 'ireal-lyric-cell';
           lyricCell.style.flex = take;
-          if (!lyricUsed) {
-            lyricCell.textContent = ch.text.trim();
+          const isLastCell = (remaining - take) <= 0;
+          if (!lyricUsed && ch.text) {
+            const anticipate = ch.text.length > 0 && ch.text[0] === ' ';
+            const trimmed = ch.text.trim();
+            const spansMultipleMeasures = ch.beats > beatsPerMeasure;
+            let commaIdx = -1;
+            if (spansMultipleMeasures) {
+              for (let ci = trimmed.length - 1; ci > 0; ci--) {
+                if (trimmed[ci] === ',' || trimmed[ci] === '.' || trimmed[ci] === ';') { commaIdx = ci; break; }
+              }
+            }
+            if (commaIdx > 0 && commaIdx < trimmed.length - 1) {
+              lyricCell.textContent = trimmed.substring(0, commaIdx + 1);
+              ch._trailingLyric = trimmed.substring(commaIdx + 1).trim();
+            } else {
+              lyricCell.textContent = trimmed;
+              if (anticipate) lyricCell.style.textAlign = 'right';
+            }
             lyricUsed = true;
+          } else if (lyricUsed && ch._trailingLyric && isLastCell) {
+            lyricCell.textContent = ch._trailingLyric;
+            lyricCell.style.textAlign = 'right';
+            ch._trailingLyric = null;
           }
           lyricMeasureEl.appendChild(lyricCell);
           lastLyricCell = lyricCell;
@@ -7703,6 +7724,7 @@ function renderGrid(song, semitones, useFlats, output) {
 
     sectionDiv.appendChild(grid);
     container.appendChild(sectionDiv);
+    if (lastLyricCell) prevSectionLastLyricCell = lastLyricCell;
   }
 
   output.appendChild(container);
