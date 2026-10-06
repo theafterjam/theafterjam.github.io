@@ -151,7 +151,7 @@
   }
   .print-song-block {
     background: #fff; margin-bottom: 30px;
-    box-shadow: 0 1px 6px rgba(0,0,0,0.15); overflow: hidden;
+    box-shadow: 0 1px 6px rgba(0,0,0,0.15); overflow: visible;
   }
   .print-song-settings-bar {
     display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
@@ -192,9 +192,6 @@
     position: absolute; left: 0; right: 0; height: 0;
     border-top: 2px dashed #bbb;
     pointer-events: none; z-index: 1;
-  }
-  .page-break-pad {
-    pointer-events: none;
   }
 
   /* === Main content === */
@@ -638,7 +635,6 @@
     #output.cols-2 { column-count: 2; column-gap: 24px; }
     #output.cols-3 { column-count: 3; column-gap: 20px; }
     .chord-pair, .line-wrap { break-inside: avoid; page-break-inside: avoid; }
-    .ireal-section { break-inside: avoid; page-break-inside: avoid; }
 
     .print-preview-overlay { position: static; background: #fff; overflow: visible; }
     .print-preview-toolbar { display: none !important; }
@@ -655,10 +651,16 @@
     }
     .print-song-container .chord-strip { font-size: var(--print-song-font-size, 16px) !important; }
     .page-break-marker { display: none !important; }
-    .page-break-pad { break-after: page; page-break-after: always; height: 0 !important; }
+    .print-song-page {
+      min-height: auto !important; padding: 0 !important;
+      break-after: page; page-break-after: always;
+    }
+    .print-song-page:last-child { break-after: auto; page-break-after: auto; }
+    .print-song-page .chord-pair,
+    .print-song-page .line-wrap { break-inside: avoid; page-break-inside: avoid; }
+    .print-song-page .ireal-row { break-inside: avoid; page-break-inside: avoid; }
     .print-song-container .chord-pair,
     .print-song-container .line-wrap { break-inside: avoid; page-break-inside: avoid; }
-    .print-song-container .ireal-section { break-inside: avoid; page-break-inside: avoid; }
     .print-song-container .section-label { break-after: avoid; page-break-after: avoid; }
   }
 </style>
@@ -6166,10 +6168,12 @@ function renderSongContent(songContent, settings, container) {
 }
 
 function renderSongForPrint(songContent, settings, block) {
+  block.querySelectorAll('.print-song-page').forEach(p => p.remove());
   const container = block.querySelector('.print-song-container');
+  container.style.display = '';
   container.style.setProperty('--print-song-font-size', '16px');
   renderSongContent(songContent, settings, container);
-  requestAnimationFrame(() => autoSizeAndPaginate(block, songContent, settings));
+  requestAnimationFrame(() => requestAnimationFrame(() => autoSizeAndPaginate(block, songContent, settings)));
 }
 
 function autoSizeAndPaginate(block, songContent, settings) {
@@ -6177,11 +6181,14 @@ function autoSizeAndPaginate(block, songContent, settings) {
   if (!container) return;
   const numPages = settings.pages || 1;
 
+  block.querySelectorAll('.print-song-page').forEach(p => p.remove());
+  container.style.display = '';
+  console.log('autoSize: numPages=' + numPages + ', children=' + container.children.length + ', scrollH=' + container.scrollHeight);
+
   let lo = PRINT_MIN_FONT, hi = PRINT_MAX_FONT, bestSize = lo;
   while (lo <= hi) {
     const mid = Math.floor((lo + hi) / 2);
     container.style.setProperty('--print-song-font-size', mid + 'px');
-    clearPads(container);
     const needed = simulatePageCount(container);
     if (needed <= numPages) {
       bestSize = mid;
@@ -6192,25 +6199,74 @@ function autoSizeAndPaginate(block, songContent, settings) {
   }
 
   container.style.setProperty('--print-song-font-size', bestSize + 'px');
-  clearPads(container);
-  insertPageBreakPads(container);
 
-  container.style.minHeight = (numPages * PRINT_PAGE_HEIGHT) + 'px';
-  for (let p = 1; p < numPages; p++) {
-    const marker = document.createElement('div');
-    marker.className = 'page-break-marker';
-    marker.style.top = (p * PRINT_PAGE_HEIGHT) + 'px';
-    container.appendChild(marker);
+  if (numPages > 1) {
+    splitIntoPages(block, container, numPages, bestSize);
+  } else {
+    container.style.minHeight = PRINT_PAGE_HEIGHT + 'px';
   }
 
   const sizeDisplay = block.querySelector('.effective-font-size');
   if (sizeDisplay) sizeDisplay.textContent = bestSize + 'px';
 }
 
-function clearPads(container) {
-  container.querySelectorAll('.page-break-pad').forEach(m => m.remove());
-  container.querySelectorAll('.page-break-marker').forEach(m => m.remove());
-  container.style.minHeight = '';
+function getSplittableBlocks(container) {
+  const blocks = [];
+  for (const child of container.children) {
+    if (child.classList.contains('page-break-marker')) continue;
+    if (child.classList.contains('ireal-container')) {
+      for (const section of child.children) blocks.push(section);
+    } else {
+      blocks.push(child);
+    }
+  }
+  return blocks;
+}
+
+function splitIntoPages(block, container, numPages, fontSize) {
+  const splittable = getSplittableBlocks(container);
+  const baseTop = container.getBoundingClientRect().top;
+
+  const items = splittable.map(el => {
+    const rect = el.getBoundingClientRect();
+    return { el, top: rect.top - baseTop, height: rect.height };
+  });
+
+  const pages = [];
+  for (let p = 0; p < numPages; p++) pages.push([]);
+
+  let currentPage = 0;
+  let pageUsed = 0;
+  for (const item of items) {
+    if (item.height === 0) { pages[currentPage].push(item.el); continue; }
+    if (pageUsed > 0 && pageUsed + item.height > PRINT_PAGE_HEIGHT && currentPage < numPages - 1) {
+      currentPage++;
+      pageUsed = 0;
+    }
+    pages[currentPage].push(item.el);
+    pageUsed += item.height;
+  }
+
+  container.style.display = 'none';
+  for (let p = 0; p < pages.length; p++) {
+    if (pages[p].length === 0 && p > 0) continue;
+    const pageDiv = document.createElement('div');
+    pageDiv.className = 'print-song-page';
+    pageDiv.style.setProperty('--print-song-font-size', fontSize + 'px');
+    pageDiv.style.fontSize = 'var(--print-song-font-size)';
+    pageDiv.style.minHeight = PRINT_PAGE_HEIGHT + 'px';
+    pageDiv.style.padding = '20px 24px';
+    pageDiv.style.position = 'relative';
+    pageDiv.style.boxSizing = 'border-box';
+    for (const el of pages[p]) pageDiv.appendChild(el);
+    if (p < pages.length - 1) {
+      const marker = document.createElement('div');
+      marker.className = 'page-break-marker';
+      marker.style.cssText = 'position:absolute;bottom:0;left:0;right:0;border-top:2px dashed #bbb;';
+      pageDiv.appendChild(marker);
+    }
+    block.appendChild(pageDiv);
+  }
 }
 
 function getPrintableBlocks(container) {
@@ -6235,44 +6291,25 @@ function getPrintableBlocks(container) {
 }
 
 function simulatePageCount(container) {
-  const blocks = getPrintableBlocks(container);
+  const blocks = getSplittableBlocks(container);
   const baseTop = container.getBoundingClientRect().top;
-  let y = 0;
-  for (const block of blocks) {
-    const rect = block.getBoundingClientRect();
-    const top = rect.top - baseTop;
-    const h = rect.height;
+  const items = blocks.map(el => {
+    const rect = el.getBoundingClientRect();
+    return rect.height;
+  });
+  let currentPage = 0;
+  let pageUsed = 0;
+  for (const h of items) {
     if (h === 0) continue;
-    const pageBottom = (Math.floor(top / PRINT_PAGE_HEIGHT) + 1) * PRINT_PAGE_HEIGHT;
-    if (top + h > pageBottom && top < pageBottom) {
-      y = pageBottom + h;
-    } else {
-      y = top + h;
+    if (pageUsed > 0 && pageUsed + h > PRINT_PAGE_HEIGHT) {
+      currentPage++;
+      pageUsed = 0;
     }
+    pageUsed += h;
   }
-  return y <= 0 ? 1 : Math.ceil(y / PRINT_PAGE_HEIGHT);
+  return currentPage + 1;
 }
 
-function insertPageBreakPads(container) {
-  const blocks = getPrintableBlocks(container);
-  const baseTop = container.getBoundingClientRect().top;
-  let shift = 0;
-  for (const block of blocks) {
-    const rect = block.getBoundingClientRect();
-    const top = rect.top - baseTop + shift;
-    const h = rect.height;
-    if (h === 0) continue;
-    const pageBottom = (Math.floor(top / PRINT_PAGE_HEIGHT) + 1) * PRINT_PAGE_HEIGHT;
-    if (top + h > pageBottom && top < pageBottom) {
-      const padHeight = pageBottom - top;
-      const pad = document.createElement('div');
-      pad.className = 'page-break-pad';
-      pad.style.height = padHeight + 'px';
-      block.parentNode.insertBefore(pad, block);
-      shift += padHeight;
-    }
-  }
-}
 
 function buildPrintSongSettingsBar(songTitle, songArtist, index, settings, onChange) {
   const bar = document.createElement('div');
