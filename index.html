@@ -13,7 +13,10 @@
   .app-layout { display: flex; height: 100vh; }
 
   /* === Sidebar === */
-  .sidebar { width: 260px; background: #2c3e50; color: #fff; display: flex; flex-direction: column; flex-shrink: 0; transition: transform 0.25s ease; }
+  .sidebar { width: 260px; background: #2c3e50; color: #fff; display: flex; flex-direction: column; flex-shrink: 0; transition: margin-left 0.25s ease, transform 0.25s ease; }
+  .sidebar.collapsed { margin-left: -260px; }
+  .sidebar-collapse-btn { position: absolute; top: 8px; right: -18px; width: 18px; height: 48px; background: #2c3e50; color: #95a5a6; border: none; border-radius: 0 4px 4px 0; cursor: pointer; font-size: 0.7em; line-height: 48px; text-align: center; z-index: 101; padding: 0; }
+  .sidebar-collapse-btn:hover { color: #fff; background: #34495e; }
   .sidebar-header { padding: 16px 18px; background: #1a252f; font-size: 1.1em; font-weight: 700; letter-spacing: 0.5px; }
   .sidebar-actions { padding: 12px; display: flex; gap: 8px; border-bottom: 1px solid #34495e; }
   .sidebar-actions button { flex: 1; padding: 7px; cursor: pointer; border: none; border-radius: 4px; color: #fff; font-size: 0.82em; font-weight: 600; }
@@ -387,8 +390,9 @@
   .mobile-settings-panel.visible { display: flex; }
 
   @media (max-width: 768px) {
-    .sidebar { position: fixed; left: 0; top: 0; bottom: 0; z-index: 100; transform: translateX(-100%); }
+    .sidebar { position: fixed; left: 0; top: 0; bottom: 0; z-index: 100; transform: translateX(-100%); margin-left: 0 !important; }
     .sidebar.open { transform: translateX(0); }
+    .sidebar-collapse-btn { display: none; }
     .sidebar-toggle { display: block; }
     .sidebar-overlay.active { display: block; }
     .toolbar { display: none; }
@@ -671,7 +675,8 @@
 <div class="sidebar-overlay" onclick="toggleMobileSidebar()"></div>
 
 <div class="app-layout">
-  <aside class="sidebar">
+  <aside class="sidebar" style="position:relative;">
+    <button class="sidebar-collapse-btn" onclick="toggleSidebarCollapse()" title="Toggle sidebar">&#9664;</button>
     <div class="sidebar-tabs">
       <button class="sidebar-tab active" onclick="switchSidebarTab('library')">Library</button>
       <button class="sidebar-tab" onclick="switchSidebarTab('setlists')">Set Lists</button>
@@ -3923,6 +3928,8 @@ let chordAnalysis = [];
 // --- Set Lists ---
 const SETLIST_STORAGE_KEY = 'uke-setlists';
 const PRINT_SETTINGS_KEY = 'uke-setlist-print-settings';
+const SONG_PREFS_KEY = 'uke-song-prefs';
+let songPrefs = {};
 let setLists = [];
 let activeSetListId = null;
 let addToSetListDropdown = null;
@@ -3948,6 +3955,29 @@ function loadVoicingOverrides() {
     const data = localStorage.getItem(VOICING_STORAGE_KEY);
     if (data) voicingOverrides = JSON.parse(data);
   } catch(e) {}
+}
+
+function saveSongPrefs() {
+  try { localStorage.setItem(SONG_PREFS_KEY, JSON.stringify(songPrefs)); } catch(e) {}
+}
+function loadSongPrefs() {
+  try {
+    const data = localStorage.getItem(SONG_PREFS_KEY);
+    if (data) songPrefs = JSON.parse(data);
+  } catch(e) {}
+}
+function getSongPrefs(songId) {
+  return songPrefs[songId] || null;
+}
+function saveSongPref(key, value) {
+  if (!activeSongId) return;
+  if (!songPrefs[activeSongId]) songPrefs[activeSongId] = {};
+  songPrefs[activeSongId][key] = value;
+  saveSongPrefs();
+}
+function getCurrentFontSize() {
+  const v = getComputedStyle(document.documentElement).getPropertyValue('--dynamic-font-size');
+  return parseInt(v) || 20;
 }
 
 function getOverrideBucket(songId, tuning, transpose) {
@@ -4053,11 +4083,13 @@ function transposeStep(dir) {
   document.getElementById('transposeValue').textContent = display;
   const mt = document.getElementById('mobileTransposeValue');
   if (mt) mt.textContent = display;
+  saveSongPref('transpose', transposeAmount);
   renderSong();
 }
 
 function updateFontSize(value) {
   document.documentElement.style.setProperty('--dynamic-font-size', value + 'px');
+  saveSongPref('fontSize', parseInt(value));
   if (currentLayout === 'grid') renderSong();
 }
 
@@ -4070,6 +4102,7 @@ function setLayout(layout) {
   if (mlb) mlb.classList.toggle('active', layout === 'lyrics');
   if (mgb) mgb.classList.toggle('active', layout === 'grid');
   document.getElementById('gridLyricsLabel').style.display = layout === 'grid' ? '' : 'none';
+  saveSongPref('layout', layout);
   renderSong();
 }
 
@@ -4081,6 +4114,7 @@ function setChordFormat(fmt) {
   const mcb = document.getElementById('mobileChordChartBtn');
   if (mtb) mtb.classList.toggle('active', fmt === 'text');
   if (mcb) mcb.classList.toggle('active', fmt === 'chart');
+  saveSongPref('chordFormat', fmt);
   renderSong();
 }
 
@@ -4115,6 +4149,7 @@ function setColumns(n) {
   document.getElementById('col1Btn').classList.toggle('active', n === 1);
   document.getElementById('col2Btn').classList.toggle('active', n === 2);
   document.getElementById('col3Btn').classList.toggle('active', n === 3);
+  saveSongPref('columns', n);
 }
 
 // --- Fit to Page (smart: tries columns 1/2/3 × font sizes) ---
@@ -5058,10 +5093,11 @@ function playClick(accent) {
   osc.stop(ctx.currentTime + 0.08);
 }
 
-function setRhythm(val) {
+function setRhythm(val, fromSongDirective) {
   rhythm = val;
   document.getElementById('rhythmSelect').value = val;
   document.getElementById('floatRhythmSelect').value = val;
+  if (!fromSongDirective) saveSongPref('rhythm', val);
 }
 
 function setDrumVolume(val) {
@@ -5110,6 +5146,7 @@ function setBassMode(val) {
   bassMode = val;
   document.getElementById('bassSelect').value = val;
   document.getElementById('floatBassSelect').value = val;
+  saveSongPref('bassMode', val);
 }
 
 function togglePlayback() {
@@ -5387,6 +5424,7 @@ function adjustTempo(delta) {
   document.getElementById('floatTempo').textContent = playbackBPM;
   const mt = document.getElementById('mobileTempoDisplay');
   if (mt) mt.textContent = playbackBPM;
+  saveSongPref('tempo', playbackBPM);
 }
 
 function restartPlayback() {
@@ -5398,6 +5436,7 @@ function adjustFormRepeats(delta) {
   formRepeatCount = Math.max(1, Math.min(20, formRepeatCount + delta));
   updateRepeatDisplay();
   updatePassDisplay();
+  saveSongPref('repeats', formRepeatCount);
 }
 
 function updateRepeatDisplay() {
@@ -5490,6 +5529,13 @@ document.getElementById('output')?.addEventListener('click', (e) => {
 function toggleMobileSidebar() {
   document.querySelector('.sidebar').classList.toggle('open');
   document.querySelector('.sidebar-overlay').classList.toggle('active');
+}
+
+function toggleSidebarCollapse() {
+  const sidebar = document.querySelector('.sidebar');
+  const btn = sidebar.querySelector('.sidebar-collapse-btn');
+  sidebar.classList.toggle('collapsed');
+  btn.innerHTML = sidebar.classList.contains('collapsed') ? '&#9654;' : '&#9664;';
 }
 
 // --- Song Library ---
@@ -5598,10 +5644,101 @@ function updateSidebar() {
 function loadSongFromLibrary(song) {
   activeSongId = song.id;
   document.getElementById('chordProInput').value = song.content;
-  transposeAmount = 0;
-  document.getElementById('transposeValue').textContent = '0';
+  const prefs = getSongPrefs(song.id);
+  if (prefs) {
+    applySongPrefs(prefs);
+  } else {
+    resetPlaybackDefaults();
+    transposeAmount = 0;
+    document.getElementById('transposeValue').textContent = '0';
+    const mt = document.getElementById('mobileTransposeValue');
+    if (mt) mt.textContent = '0';
+  }
   updateEditorHighlight();
   renderSong();
+}
+
+function resetPlaybackDefaults() {
+  playbackBPM = 120;
+  document.getElementById('tempoDisplay').textContent = '120';
+  document.getElementById('floatTempo').textContent = '120';
+  const mtp = document.getElementById('mobileTempoDisplay');
+  if (mtp) mtp.textContent = '120';
+  bassMode = 'head';
+  document.getElementById('bassSelect').value = 'head';
+  document.getElementById('floatBassSelect').value = 'head';
+  formRepeatCount = 1;
+  updateRepeatDisplay();
+}
+
+function applySongPrefs(prefs) {
+  if (prefs.transpose != null) {
+    transposeAmount = prefs.transpose;
+    const display = transposeAmount === 0 ? '0' : (transposeAmount > 0 ? '+' + transposeAmount : '' + transposeAmount);
+    document.getElementById('transposeValue').textContent = display;
+    const mt = document.getElementById('mobileTransposeValue');
+    if (mt) mt.textContent = display;
+  } else {
+    transposeAmount = 0;
+    document.getElementById('transposeValue').textContent = '0';
+    const mt = document.getElementById('mobileTransposeValue');
+    if (mt) mt.textContent = '0';
+  }
+  if (prefs.layout) {
+    currentLayout = prefs.layout;
+    document.getElementById('layoutLyricsBtn').classList.toggle('active', prefs.layout === 'lyrics');
+    document.getElementById('layoutGridBtn').classList.toggle('active', prefs.layout === 'grid');
+    const mlb = document.getElementById('mobileLayoutLyricsBtn');
+    const mgb = document.getElementById('mobileLayoutGridBtn');
+    if (mlb) mlb.classList.toggle('active', prefs.layout === 'lyrics');
+    if (mgb) mgb.classList.toggle('active', prefs.layout === 'grid');
+    document.getElementById('gridLyricsLabel').style.display = prefs.layout === 'grid' ? '' : 'none';
+  }
+  if (prefs.chordFormat) {
+    currentChordFormat = prefs.chordFormat;
+    document.getElementById('chordTextBtn').classList.toggle('active', prefs.chordFormat === 'text');
+    document.getElementById('chordChartBtn').classList.toggle('active', prefs.chordFormat === 'chart');
+    const mtb = document.getElementById('mobileChordTextBtn');
+    const mcb = document.getElementById('mobileChordChartBtn');
+    if (mtb) mtb.classList.toggle('active', prefs.chordFormat === 'text');
+    if (mcb) mcb.classList.toggle('active', prefs.chordFormat === 'chart');
+  }
+  if (prefs.fontSize) {
+    document.documentElement.style.setProperty('--dynamic-font-size', prefs.fontSize + 'px');
+    const slider = document.querySelector('.size-control input');
+    if (slider) slider.value = prefs.fontSize;
+  }
+  if (prefs.columns) {
+    currentColumns = prefs.columns;
+    const output = document.getElementById('output');
+    output.classList.remove('cols-2', 'cols-3');
+    if (prefs.columns === 2) output.classList.add('cols-2');
+    if (prefs.columns === 3) output.classList.add('cols-3');
+    document.getElementById('col1Btn').classList.toggle('active', prefs.columns === 1);
+    document.getElementById('col2Btn').classList.toggle('active', prefs.columns === 2);
+    document.getElementById('col3Btn').classList.toggle('active', prefs.columns === 3);
+  }
+  if (prefs.tempo) {
+    playbackBPM = prefs.tempo;
+    document.getElementById('tempoDisplay').textContent = playbackBPM;
+    document.getElementById('floatTempo').textContent = playbackBPM;
+    const mtp = document.getElementById('mobileTempoDisplay');
+    if (mtp) mtp.textContent = playbackBPM;
+  }
+  if (prefs.rhythm) {
+    rhythm = prefs.rhythm;
+    document.getElementById('rhythmSelect').value = prefs.rhythm;
+    document.getElementById('floatRhythmSelect').value = prefs.rhythm;
+  }
+  if (prefs.bassMode) {
+    bassMode = prefs.bassMode;
+    document.getElementById('bassSelect').value = prefs.bassMode;
+    document.getElementById('floatBassSelect').value = prefs.bassMode;
+  }
+  if (prefs.repeats) {
+    formRepeatCount = prefs.repeats;
+    updateRepeatDisplay();
+  }
 }
 
 function saveAsFile() {
@@ -6108,12 +6245,13 @@ function savePrintSettings(setlistId, settings) {
   } catch {}
 }
 
-function getDefaultPrintSettings() {
+function getDefaultPrintSettings(songId) {
+  const prefs = songId ? getSongPrefs(songId) : null;
   return {
-    layout: currentLayout,
-    chordFormat: currentChordFormat,
-    pages: 1,
-    transpose: 0,
+    layout: (prefs && prefs.layout) || currentLayout,
+    chordFormat: (prefs && prefs.chordFormat) || currentChordFormat,
+    pages: (prefs && prefs.pages) || 1,
+    transpose: (prefs && prefs.transpose != null) ? prefs.transpose : 0,
     showGridLyrics: true
   };
 }
@@ -6438,7 +6576,6 @@ function openSetlistPrintPreview() {
   if (printPreviewOverlay) closeSetlistPrintPreview();
 
   const allSettings = loadPrintSettings(sl.id);
-  const defaults = getDefaultPrintSettings();
 
   const overlay = document.createElement('div');
   overlay.className = 'print-preview-overlay';
@@ -6473,6 +6610,7 @@ function openSetlistPrintPreview() {
     const song = library.find(s => s.id === entry.songId);
     if (!song) continue;
 
+    const defaults = getDefaultPrintSettings(entry.songId);
     const songSettings = allSettings[entry.songId]
       ? Object.assign({}, defaults, allSettings[entry.songId])
       : Object.assign({}, defaults);
@@ -6492,6 +6630,11 @@ function openSetlistPrintPreview() {
       (updated) => {
         allSettings[entry.songId] = updated;
         savePrintSettings(sl.id, allSettings);
+        if (updated.pages) {
+          if (!songPrefs[entry.songId]) songPrefs[entry.songId] = {};
+          songPrefs[entry.songId].pages = updated.pages;
+          saveSongPrefs();
+        }
         renderSongForPrint(song.content, updated, block);
       }
     );
@@ -6929,7 +7072,11 @@ function renderSong() {
   currentSongRiffs = song.riffs || {};
   buildRiffColorMap(currentSongRiffs);
   playbackBeatsPerMeasure = song.time ? song.time.beats : 4;
-  setRhythm(song.rhythm && ['swing', 'bossa', 'funk', 'soul', 'headhunters'].includes(song.rhythm) ? song.rhythm : 'swing');
+  const savedPrefs = activeSongId ? getSongPrefs(activeSongId) : null;
+  if (!savedPrefs || !savedPrefs.rhythm) {
+    const directive = song.rhythm && ['swing', 'bossa', 'funk', 'soul', 'headhunters'].includes(song.rhythm) ? song.rhythm : 'swing';
+    setRhythm(directive, true);
+  }
   const semitones = getTranspose();
   const useFlats = semitones < 0;
   const output = document.getElementById('output');
@@ -9008,6 +9155,7 @@ chordInput.addEventListener('keydown', (e) => {
 loadLibrary();
 loadSetLists();
 loadVoicingOverrides();
+loadSongPrefs();
 loadRemoteSongs();
 updateEditorHighlight();
 setTuning(currentTuning);
