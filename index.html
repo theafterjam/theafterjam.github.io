@@ -3925,6 +3925,15 @@ let currentPass = 0;
 let chordToPlayIndex = [];
 let chordAnalysis = [];
 
+// --- Platform shortcuts ---
+// macOS reserves Ctrl+Arrow (Spaces/Mission Control) and Cmd+Arrow (line start/end),
+// so on Mac chord navigation uses Ctrl+Option+Arrow and letter shortcuts accept Cmd or Ctrl.
+const IS_MAC = /Mac|iPhone|iPad|iPod/.test(navigator.userAgentData?.platform || navigator.platform || navigator.userAgent);
+const KEY_MOD = IS_MAC ? '⌘' : 'Ctrl+';
+const KEY_NAV = IS_MAC ? '⌃⌥' : 'Ctrl+';
+const KEY_MOD_M = IS_MAC ? '⌃' : 'Ctrl+'; // Cmd+M minimizes the window on macOS
+function isShortcutMod(e) { return e.ctrlKey || (IS_MAC && e.metaKey); }
+
 // --- Set Lists ---
 const SETLIST_STORAGE_KEY = 'uke-setlists';
 const PRINT_SETTINGS_KEY = 'uke-setlist-print-settings';
@@ -8391,19 +8400,19 @@ function updateModeHint() {
   const hint = document.getElementById('editorNavHint');
   if (!hint) return;
   if (importMode) {
-    hint.textContent = 'IMPORT MODE (Ctrl+I): load iReal Pro file, map sections, apply — Escape = cancel';
+    hint.textContent = 'IMPORT MODE (' + KEY_MOD + 'I): load iReal Pro file, map sections, apply — Escape = cancel';
     hint.style.color = '#0097a7';
   } else if (defineMode) {
-    hint.textContent = 'DEFINE MODE (Ctrl+D): edit frets for ' + defineChordName + ', Enter = confirm, Escape = cancel';
+    hint.textContent = 'DEFINE MODE (' + KEY_MOD + 'D): edit frets for ' + defineChordName + ', Enter = confirm, Escape = cancel';
     hint.style.color = '#8e44ad';
   } else if (beatEntryMode) {
-    hint.textContent = 'BEAT MODE (Ctrl+B): type beat count, Enter = confirm & next, Escape = exit';
+    hint.textContent = 'BEAT MODE (' + KEY_MOD + 'B): type beat count, Enter = confirm & next, Escape = exit';
     hint.style.color = '#e67e22';
   } else if (alignmentMode) {
-    hint.textContent = 'ALIGNMENT MODE (Ctrl+M): ←→ move chord, Ctrl+←→ jump chords, Escape = exit';
+    hint.textContent = 'ALIGNMENT MODE (' + KEY_MOD_M + 'M): ←→ move chord, ' + KEY_NAV + '←→ jump chords, Escape = exit';
     hint.style.color = '#27ae60';
   } else {
-    hint.innerHTML = 'Ctrl+→ next chord &nbsp; Ctrl+← prev chord &nbsp; Ctrl+B beat mode &nbsp; Ctrl+M alignment mode &nbsp; Ctrl+D define chord &nbsp; Ctrl+I import';
+    hint.innerHTML = KEY_NAV + '→ next chord &nbsp; ' + KEY_NAV + '← prev chord &nbsp; ' + KEY_MOD + 'B beat mode &nbsp; ' + KEY_MOD_M + 'M alignment mode &nbsp; ' + KEY_MOD + 'D define chord &nbsp; ' + KEY_MOD + 'I import';
     hint.style.color = '#888';
   }
 }
@@ -8981,6 +8990,7 @@ function detectChordsAboveLyrics(text) {
 
 // --- Init ---
 const chordInput = document.getElementById('chordProInput');
+updateModeHint(); // replace static hint with platform-specific shortcut labels
 
 chordInput.addEventListener('input', () => {
   updateEditorHighlight();
@@ -9035,14 +9045,14 @@ chordInput.addEventListener('keydown', (e) => {
     }
   }
   if (importMode) {
-    if (e.key === 'Escape' || (e.ctrlKey && e.key.toLowerCase() === 'i')) {
+    if (e.key === 'Escape' || (isShortcutMod(e) && e.key.toLowerCase() === 'i')) {
       e.preventDefault();
       cancelImport();
       return;
     }
   }
   if (alignmentMode) {
-    if (e.key === 'Escape' || (e.ctrlKey && e.key.toLowerCase() === 'm')) {
+    if (e.key === 'Escape' || (isShortcutMod(e) && e.key.toLowerCase() === 'm')) {
       e.preventDefault();
       alignmentMode = false;
       updateModeHint();
@@ -9101,7 +9111,7 @@ chordInput.addEventListener('keydown', (e) => {
       advanceBeat(chordInput);
       return;
     }
-    if (e.key === 'Escape' || (e.ctrlKey && e.key.toLowerCase() === 'b')) {
+    if (e.key === 'Escape' || (isShortcutMod(e) && e.key.toLowerCase() === 'b')) {
       e.preventDefault();
       beatEntryMode = false;
       updateModeHint();
@@ -9109,20 +9119,20 @@ chordInput.addEventListener('keydown', (e) => {
       return;
     }
   }
-  if (e.ctrlKey && e.key.toLowerCase() === 'd') {
+  if (isShortcutMod(e) && e.key.toLowerCase() === 'd') {
     e.preventDefault();
     enterDefineMode(chordInput);
-  } else if (e.ctrlKey && e.key.toLowerCase() === 'b') {
+  } else if (isShortcutMod(e) && e.key.toLowerCase() === 'b') {
     e.preventDefault();
     alignmentMode = false;
     defineMode = false;
     enterBeatMode(chordInput, beatEntryMode ? 1 : 0);
-  } else if (e.ctrlKey && e.key.toLowerCase() === 'm') {
+  } else if (isShortcutMod(e) && e.key.toLowerCase() === 'm') {
     e.preventDefault();
     beatEntryMode = false;
     defineMode = false;
     enterAlignmentMode(chordInput);
-  } else if (e.ctrlKey && e.key.toLowerCase() === 'i') {
+  } else if (isShortcutMod(e) && e.key.toLowerCase() === 'i') {
     e.preventDefault();
     enterImportMode();
   } else if (e.ctrlKey && !e.shiftKey && e.key === 'ArrowRight') {
