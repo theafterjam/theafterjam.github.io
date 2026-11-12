@@ -1,0 +1,20 @@
+{title: Christmas Don't be Late}
+{artist: Alvin and the Chipmunks }
+{time: 3/4}
+
+
+[A]Christmas, Christmas [E7]time is near, [E7]Time for toys and [A]time for cheer.
+[Bm]We've been [E7]good, but [Bm]we can't [E]last, [Bm]Hurry [E]Christmas, [A]hurry fast.
+
+[A]Want a plane that [E]loops the [A]loop, Me, I [A7]want a [D]Hula-Hoop.
+[D]We can [Dm]hardly [A]stand the [B7]wait, Please [Bm]Christmas, [E7]don't be [A]late. [F#7]
+
+
+{Modulation:}
+
+[B]Christmas, Christmas [F#7]time is near, [F#7]Time for toys and [B]time for cheer.
+[C#m]We've been [F#7]good, but [C#m]we can't [F#]last, [C#m]Hurry [F#]Christmas, [B]Hurry fast.
+
+[B]Want a plane that [F#]loops the [B]loop, I still [B7]want a [E]Hula-Hoop.
+[E]We can [Em]hardly [B]stand the [G#7]wait, Please [E]Christmas [F#7]don't be [B]late.
+[E]We can[Em] hardly [B]stand the [G#7]wait, Please [E]Christmas [F#7]don't be [B]late.

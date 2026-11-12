@@ -1,0 +1,64 @@
+{title: This Christmas}
+{artist: Donny Hathaway}
+{time: 4/4}
+
+{Intro:}
+[Gm7:2][Am7:2][Bb:2][C7:1][F:1][F:4]
+[Gm7:2][Am7:2][Bb:2][C7:1][F:1][F:4]
+[Gm7:2][Am7:2][Bb:2][C7:1][F:1][F:4]
+
+
+{Verse 1:}
+[Fmaj7:8]Hang all the mistletoe
+[Dm7:8]I'm gonna get to know you [Ebmaj9:8]better
+[NC:2][Ebmaj7:2]This [Dm7:2]Christ [C7sus:2]mas
+[Fmaj7:8]And as we trim the tree
+[Dm7:8]How much fun it's gonna be [Ebmaj9:8]together
+[NC:2][Ebmaj7:2]This [Dm7:2]Christ [C7sus:2]mas
+{Bridge:}
+[Am7:8]Fireside is blazing [D7:8]bright,
+We're [Gm7:8]caroling through the [C7sus:8]night
+
+{Chorus:}
+And this [Fmaj7:4]Christmas[B7#5:4] will [Bbmaj7:4]be
+A [Eb7:4] very special [Am7:4]Christmas[Dm7:4] for [Bm7b5:8]me
+
+{Riff:}
+[Gm7:2][Am7:2][Bb:2][C7:1][F:1][F:4]
+[Gm7:2][Am7:2][Bb:2][C7:1][F:1][F:4]
+
+{Verse 2:}
+[Fmaj7:8]Presents and cards are here
+[Dm7:8]My world is filled with cheer and [Ebmaj9:8]you
+[NC:2][Ebmaj7:2]This [Dm7:2]Christ[C7sus:2]mas
+[Fmaj7:8]And as I look around,
+[Dm7:8]Your eyes outshine the town they [Ebmaj9:8]do
+[NC:2][Ebmaj7:2]This [Dm7:2]Christ[C7sus:2]mas
+{Bridge:}
+[Am7:8]Fireside is blazing [D7:8]bright,
+We're [Gm7:8]caroling through the [C7sus:8]night
+
+{Chorus:}
+And this [Fmaj7:4]Christmas[B7#5:4] will [Bbmaj7:4]be
+A [Eb7:4] very special [Am7:4]Christmas[Dm7:4] for [Bm7b5:8]me
+{Riff:}
+[Gm7:2][Am7:2][Bb:2][C7:1][F:1][F:4]Shake a hand, shake a hand now
+[Gm7:2][Am7:2][Bb:2][C7:1][F:1][F:4]
+
+{Instrumental:}
+[Fmaj7:8][Dm7:8][Ebmaj9:8]
+[NC:2][Ebmaj7:2][Dm7:2][C7sus:2]
+[Fmaj7:8][Dm7:8][Ebmaj9:8]
+[NC:2][Ebmaj7:2][Dm7:2][C7sus:2]
+{Bridge:}
+[Am7:8]Fireside is blazing [D7:8]bright,
+We're [Gm7:8]caroling through the [C7sus:8]night
+{Chorus:}
+And this [Fmaj7:4]Christmas[B7#5:4] will [Bbmaj7:4]be
+A [Eb7:4] very special [Am7:4]Christmas[Dm7:4] for [Bm7b5:8]me
+{Outro:}
+[Gm7:2][Am7:2][Bb:2][C7:1][F:1][F:4]Merry Christmas
+[Gm7:2][Am7:2][Bb:2][C7:1][F:1][F:4]Shake a hand, shake a hand now
+[Gm7:2][Am7:2][Bb:2][C7:1][F:1][F:4]Wish your brother Merry Christmas
+[Gm7:2][Am7:2][Bb:2][C7:1][F:1][F:4]All over the land
+

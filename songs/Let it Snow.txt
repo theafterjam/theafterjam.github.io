@@ -1,0 +1,57 @@
+{title: Let it Snow}
+{artist: Dean Martin}
+{time: 4/4}
+
+{Intro:}
+[C]
+
+[C/E] [D#dim7] [G/D] [G7]
+
+{Verse 1:}
+Oh, the [C]weather outside is frightful
+But the [C/E]fire [D#dim7]is     so [G/D]delight[G7]ful
+And [Dm7]since we've no[A7] place [Dm7]to go
+Let it [Dm]snow, let it snow, [G6] let it snow[C]
+Man it [C]doesn't show signs of stoppin'
+And I [C/E]brought me some[D#dim7] corn for[G/D] [G7]poppin'
+The [Dm7]lights are turned[A7] way [Dm7]down low
+[Dm7] [D#dim]Let    it [Dm7]snow, [G7]   let it [C]snow.[G] [C]
+
+{Chorus 1:}
+When we [G]finally kiss [G#dim]goodnight
+How I'll [Am7]hate going[D7] out in [G]the storm
+But if you really hold me [Bm7]tight[E7]
+[A7]All the way [D7]home   I'll be [G7]warm
+
+{Verse 2:}
+And the [C]fire is slowly dying
+And, my [C/E]dear, we're[D#dim7] still [G/D]goodbye[G7]ing
+But as [Dm7]long as you[A7] love [Dm7]me so
+Let it [Dm]snow, let it [G6]snow,   and [C]snow
+
+{Bridge:}
+[C]
+
+[C/E] [D#dim7] [G/D] [G7]
+
+[Dm7] [A7]
+
+[Dm7] [G7] [C]
+
+{Chorus 2:}
+  When we [G]finally kiss goodnight[G#dim]
+How I'll [Am7]hate going[D7] out in [G]the storm
+But if you really grab me [Bm7]tight[E7]
+[A7]All the way [D7]home   I'll be [G7]warm[G#7]
+
+[MODULATE]
+
+{Verse 3:}
+Oh the [C#]fire is slowly dying
+And, my [C#/F]dear, we're [Edim7]still [G#/D#]goodbyeing[G#7]
+But as [D#m7]long as you [A#7]love me [D#m7]so
+Let it snow, [G#7]  let it [G#6]snow, let it [C#]snow
+
+{Outro:}
+[C#]
+[D#m7] [G#/D#] [C#]

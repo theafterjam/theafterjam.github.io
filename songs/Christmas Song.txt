@@ -1,0 +1,26 @@
+{title: Christmas Song}
+{artist: }
+{time: 4/4}
+{Verse 1:}
+[Cmaj7:2]Chestnuts [Dm7:2]roasting on an [Em7:2]open fire[Fmaj7:2]. [Cmaj7:2]Jack Frost [Gm7:1]nipping [C9:1]at your [Fmaj7:2]nose[Bb9:2]
+[Am:2]Yuletide [Fm6:2]carols being [Cmaj7:2]sung by a [B7:2]choir. And [Emaj7:2]folks dressed [Fm7:2]up like [Dm7/G:2]Eskimos,[G7:2] everybody
+
+{Verse 2:}
+[Cmaj7:2]Knows, a [Dm7:2]turkey and some [Em7:2]mistletoe[Fmaj7:2]. [Cmaj7:2]Help to [Gm7:1]make the [C7:1]season [Fmaj7:2]bright[Bb9:2]
+[Am:2]Tiny [Dm7b5:2]tots with their [Cmaj7:2]eyes all [B7:2]aglow. Will [Em7:1]find it [Am7:1]hard to [Dm7:1]sleep [G7:1]to[Cmaj7:4]night
+
+{Bridge:}
+They know that [Gm7:2]Santa's [C9:2]on his [Fmaj7:4]way. He's loaded [Gm7:2]lots of toys and [C9:2]goodies on his [Fmaj7:4]sleigh
+And every [Fm7:2]mother's child[Bb7:2] is gonna [Ebmaj7:4]spy. To see if [G7sus:4]reindeer really know how to [G7:4]fly
+
+{Verse 3:}
+And [Cmaj7:2]so, I'm [Dm7:2]offering this [Em7:2]simple phrase[Fmaj7:2]. To [Cmaj7:2]kids from [Gm7:1]one to [C9:1]ninety-[Fmaj7:2]two[Bb9:2]
+[Am:2]Although it's been [Dm7b5:2]said many [Cmaj7:2]times, many [B7:2]ways. Merry [Em7:1]Christ[Am7:1]mas [Dm7:1] [G7:1]to [Cmaj7:4]you
+
+{Instrumental:}
+[Gm7:2] [C9:2] [Fmaj7:4] [Gm7:2] [C9:2] [Fmaj7:4]
+[Fm7:2] [Bb7:2] [Ebmaj7:4] [G7sus:4] [G7:4]
+
+{Verse 3:}
+And [Cmaj7:2]so, I'm [Dm7:2]offering this [Em7:2]simple phrase[Fmaj7:2]. To [Cmaj7:2]kids from [Gm7:1]one to [C9:1]ninety-[Fmaj7:2]two[Bb9:2]
+[Am:2]Although it's been [Dm7b5:2]said many [Cmaj7:2]times, many [B7:2]ways. Merry [Em7:1]Christ[Am7:1]mas, [Dm7:1] [G7:1]Merry [Em7:1]Christ[Am7:1]mas, [Dm7:1] [G7:1]Merry [Em7:1]Christ[Am7:1]mas, [Dm7:1] [G7:1]to [Cmaj7:4]you

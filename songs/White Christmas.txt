@@ -1,0 +1,32 @@
+{title: White Christmas}
+{artist: Bing Crosby}
+{time: 4/4}
+
+{Intro:}
+[G] [Gsus4] [G]
+
+{Verse 1:}
+[G]I’m dreaming of a [Am]white [D]Christmas,[D7]
+[C]Just like the [Am]ones I [D]used to [G]know.[Gsus4] [G]
+Where the [G]tree [Gmaj7]tops [G7]glisten,
+And [C]children [Cm]listen,
+To [G]hear [Em]sleigh bells in the [Am]snow.[D] [D7]
+
+{Verse 2:}
+[G]I’m dreaming of a [Am]white [D]Christmas,[D7]
+[C] With every [Am]Christmas [D]card I [G]write.[Gsus4] [G]
+May your [G]days [Gmaj7]be merry[G7] and [C]bright,[Cm]
+And may [G]all [Em]your [Am]Christma[D]ses be [G]white.
+
+{Verse 3:}
+[G]I’m dreaming of a [Am]white [D]Christmas,[D7]
+[C] Just like the [Am]ones I [D]used to [G]know.[Gsus4] [G]
+Where the [G]tree [Gmaj7]tops [G7]glisten,
+And [C]children [Cm]listen,
+To [G]hear [Em]sleigh bells in the [Am]snow.[D] [D7]
+
+{Verse 4:}
+[G]I’m dreaming of a [Am]white [D]Christmas,[D7]
+[C] With every [Am]Christmas [D]card I [G]write.[Gsus4] [G]
+May your [G]dreams[Gmaj7] be [G7]merry and [C]bright,[Cm]
+And may [G]all [Em]your [Am]Christma[D]ses be [G]white.[Gsus4] [G]

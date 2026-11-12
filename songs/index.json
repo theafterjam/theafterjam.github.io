@@ -25,6 +25,11 @@
     "artist": "Joseph Kosma"
   },
   {
+    "file": "Baby it's cold outside.txt",
+    "title": "Baby it's cold outside",
+    "artist": ""
+  },
+  {
     "file": "Bags' Groove.txt",
     "title": "Bags' Groove",
     "artist": "Milt Jackson"
@@ -38,6 +43,11 @@
     "file": "Bewitched.txt",
     "title": "Bewitched",
     "artist": "Richard Rodgers"
+  },
+  {
+    "file": "Blue Christmas.txt",
+    "title": "Blue Christmas",
+    "artist": "Elvis Prestley"
   },
   {
     "file": "Blue Skies.txt",
@@ -55,6 +65,16 @@
     "artist": "Irving Berlin"
   },
   {
+    "file": "Christmas Don_t be Late.txt",
+    "title": "Christmas Don't be Late",
+    "artist": "Alvin and the Chipmunks"
+  },
+  {
+    "file": "Christmas Song.txt",
+    "title": "Christmas Song",
+    "artist": ""
+  },
+  {
     "file": "Cry Me A River.txt",
     "title": "Cry Me A River",
     "artist": ""
@@ -70,6 +90,11 @@
     "artist": "Bart Howard"
   },
   {
+    "file": "Frosty the Snowman.txt",
+    "title": "Frosty the Snowman",
+    "artist": ""
+  },
+  {
     "file": "Girl from Ipanema.txt",
     "title": "Girl from Ipanema",
     "artist": "Antônio Carlos Jobim"
@@ -78,6 +103,16 @@
     "file": "Hang On Little Tomato.txt",
     "title": "Hang On Little Tomato",
     "artist": "Pink Martini"
+  },
+  {
+    "file": "Happy Christmas.txt",
+    "title": "Happy Christmas",
+    "artist": "John Lennon"
+  },
+  {
+    "file": "Hi’ilawe.txt",
+    "title": "Hi’ilawe",
+    "artist": "John Cruz"
   },
   {
     "file": "I'd Jumped the Mississippi.txt",
@@ -100,6 +135,11 @@
     "artist": "Vilray"
   },
   {
+    "file": "Island Style.txt",
+    "title": "Island Style",
+    "artist": "John Cruz"
+  },
+  {
     "file": "Isn’t She Lovely.txt",
     "title": "Isn’t She Lovely",
     "artist": "Stevie Wonder"
@@ -110,9 +150,34 @@
     "artist": "Harold Arlen"
   },
   {
+    "file": "Jingle Bell Rock.txt",
+    "title": "Jingle Bell Rock",
+    "artist": ""
+  },
+  {
+    "file": "Joy to the World.txt",
+    "title": "Joy to the World",
+    "artist": ""
+  },
+  {
+    "file": "Ka Uluwehi O Ke Kai.txt",
+    "title": "Ka Uluwehi O Ke Kai",
+    "artist": "Hapa"
+  },
+  {
+    "file": "Kawailehuaaalakahonua.txt",
+    "title": "Kawailehuaaalakahonua",
+    "artist": "John Cruz"
+  },
+  {
     "file": "La Vie En Rose.txt",
     "title": "La Vie En Rose",
     "artist": ""
+  },
+  {
+    "file": "Let it Snow.txt",
+    "title": "Let it Snow",
+    "artist": "Dean Martin"
   },
   {
     "file": "Little Sparrow.txt",
@@ -125,9 +190,19 @@
     "artist": "Neil Young"
   },
   {
+    "file": "Lovely Hula Hands.txt",
+    "title": "Lovely Hula Hands",
+    "artist": "Frances Langford"
+  },
+  {
     "file": "Meet me, Midnight.txt",
     "title": "Meet me, Midnight",
     "artist": "Diane Schuur"
+  },
+  {
+    "file": "Mele Kalikimaka.txt",
+    "title": "Mele Kalikimaka",
+    "artist": ""
   },
   {
     "file": "Minor Swing.txt",
@@ -140,9 +215,39 @@
     "artist": "Erroll Garner (1954)"
   },
   {
+    "file": "My Favorite Things.txt",
+    "title": "My Favorite Things",
+    "artist": "Julie Andrews"
+  },
+  {
+    "file": "Rockin Around The Christmas Tree.txt",
+    "title": "Rockin Around The Christmas Tree",
+    "artist": "Brenda Lee"
+  },
+  {
+    "file": "Rudolph The Red-Nosed Reindeer.txt",
+    "title": "Rudolph The Red-Nosed Reindeer",
+    "artist": ""
+  },
+  {
+    "file": "Santa Baby.txt",
+    "title": "Santa Baby",
+    "artist": "Eartha Kitt"
+  },
+  {
     "file": "Sharp Dressed Man.txt",
     "title": "Sharp Dressed Man",
     "artist": "8 1/2 Souvenirs"
+  },
+  {
+    "file": "Silent Night.txt",
+    "title": "Silent Night",
+    "artist": ""
+  },
+  {
+    "file": "Silver Bells.txt",
+    "title": "Silver Bells",
+    "artist": ""
   },
   {
     "file": "Singing in the Rain - Simplified.txt",
@@ -153,6 +258,11 @@
     "file": "Singing in the Rain.txt",
     "title": "Singing in the Rain",
     "artist": "Composed by Nacio Herb Brown; lyrics by Arthur Freed (1929)"
+  },
+  {
+    "file": "Snowman.txt",
+    "title": "Snowman",
+    "artist": "Sia"
   },
   {
     "file": "So What.txt",
@@ -190,6 +300,11 @@
     "artist": "Jerome Kern"
   },
   {
+    "file": "This Christmas.txt",
+    "title": "This Christmas",
+    "artist": "Donny Hathaway"
+  },
+  {
     "file": "Watermelon Man (HeadHunters).txt",
     "title": "Watermelon Man (HeadHunters)",
     "artist": "Herbie Hancock"
@@ -198,6 +313,31 @@
     "file": "Watermelon Man.txt",
     "title": "Watermelon Man",
     "artist": ""
+  },
+  {
+    "file": "We wish you a Merry Christmas.txt",
+    "title": "We wish you a Merry Christmas",
+    "artist": ""
+  },
+  {
+    "file": "What are you doing New Years Eve_.txt",
+    "title": "What are you doing New Years Eve?",
+    "artist": ""
+  },
+  {
+    "file": "White Christmas.txt",
+    "title": "White Christmas",
+    "artist": "Bing Crosby"
+  },
+  {
+    "file": "Winter Wonderland.txt",
+    "title": "Winter Wonderland",
+    "artist": ""
+  },
+  {
+    "file": "Wonderful Christmastime.txt",
+    "title": "Wonderful Christmastime",
+    "artist": "Paul McCarteney"
   },
   {
     "file": "You Are My Sunshine.txt",
