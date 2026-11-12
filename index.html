@@ -8425,12 +8425,24 @@ function isChordToken(token) {
   if (!cleaned) return false;
   const slash = cleaned.indexOf('/');
   const main = slash > 0 ? cleaned.substring(0, slash) : cleaned;
-  return ChordLibrary.parseChord(main) !== null;
+  const parsed = ChordLibrary.parseChord(main);
+  // parseChord accepts any word starting with A-G ("Days", "Break"), so require a chord-like quality
+  return parsed !== null && /^(maj|Maj|min|m|M|dim|aug|sus|add|alt|[0-9]|[b#+\-°ø()])*$/.test(parsed.quality);
+}
+
+// A whole line in braces is already ChordPro ({Intro}, {grand pause}); pass it through untouched
+function isDirectiveLine(line) {
+  return /^\{.*\}$/.test(line.trim());
+}
+
+// Page footers left over from copying out of a PDF, e.g. "Page 1/3" or "Page 2 of 3"
+function isPageFooter(line) {
+  return /^page\s+\d+\s*(\/|of)\s*\d+$/i.test(line.trim());
 }
 
 function isChordLine(line) {
   const trimmed = line.trim();
-  if (!trimmed) return false;
+  if (!trimmed || isDirectiveLine(trimmed)) return false;
   const tokens = trimmed.split(/\s+/);
   if (tokens.length === 0) return false;
   const chordCount = tokens.filter(t => isChordToken(t)).length;
@@ -8922,6 +8934,17 @@ function smartPasteConvert(text) {
       continue;
     }
 
+    if (isPageFooter(trimmed)) {
+      i++;
+      continue;
+    }
+
+    if (isDirectiveLine(trimmed)) {
+      output.push(trimmed);
+      i++;
+      continue;
+    }
+
     if (!hasTitle && i < 3 && !isChordLine(trimmed) && !isSectionHeader(trimmed) && trimmed.length < 60) {
       output.push('{title: ' + trimmed + '}');
       hasTitle = true;
@@ -8947,7 +8970,7 @@ function smartPasteConvert(text) {
       const nextLine = i + 1 < lines.length ? lines[i + 1] : '';
       const nextIsChord = isChordLine(nextLine);
       const nextIsEmpty = !nextLine.trim();
-      const nextIsSection = isSectionHeader(nextLine.trim());
+      const nextIsSection = isSectionHeader(nextLine.trim()) || isDirectiveLine(nextLine) || isPageFooter(nextLine);
       if (!nextIsChord && !nextIsEmpty && !nextIsSection && nextLine.trim()) {
         output.push(mergeChordLineWithLyrics(line, nextLine));
         i += 2;
@@ -9145,7 +9168,7 @@ chordInput.addEventListener('keydown', (e) => {
 });
 
 chordInput.addEventListener('keydown', (e) => {
-  if (e.key === 'v' && (e.ctrlKey || e.metaKey) && e.shiftKey) {
+  if (e.key.toLowerCase() === 'v' && (e.ctrlKey || e.metaKey) && e.shiftKey) {
     e.preventDefault();
     navigator.clipboard.readText().then(pasted => {
       if (pasted && detectChordsAboveLyrics(pasted) && !hasChordProBrackets(pasted)) {
