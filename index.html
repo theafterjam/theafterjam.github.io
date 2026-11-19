@@ -13,7 +13,7 @@
   .app-layout { display: flex; height: 100vh; }
 
   /* === Sidebar === */
-  .sidebar { width: 260px; background: #2c3e50; color: #fff; display: flex; flex-direction: column; flex-shrink: 0; transition: margin-left 0.25s ease, transform 0.25s ease; }
+  .sidebar { position: relative; width: 260px; background: #2c3e50; color: #fff; display: flex; flex-direction: column; flex-shrink: 0; transition: margin-left 0.25s ease, transform 0.25s ease; }
   .sidebar.collapsed { margin-left: -260px; }
   .sidebar-collapse-btn { position: absolute; top: 8px; right: -18px; width: 18px; height: 48px; background: #2c3e50; color: #95a5a6; border: none; border-radius: 0 4px 4px 0; cursor: pointer; font-size: 0.7em; line-height: 48px; text-align: center; z-index: 101; padding: 0; }
   .sidebar-collapse-btn:hover { color: #fff; background: #34495e; }
@@ -675,7 +675,7 @@
 <div class="sidebar-overlay" onclick="toggleMobileSidebar()"></div>
 
 <div class="app-layout">
-  <aside class="sidebar" style="position:relative;">
+  <aside class="sidebar">
     <button class="sidebar-collapse-btn" onclick="toggleSidebarCollapse()" title="Toggle sidebar">&#9664;</button>
     <div class="sidebar-tabs">
       <button class="sidebar-tab active" onclick="switchSidebarTab('library')">Library</button>
