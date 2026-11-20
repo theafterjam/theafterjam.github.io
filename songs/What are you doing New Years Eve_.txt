@@ -3,30 +3,32 @@
 {time: 4/4}
 
 {INTRO:}
-[A] [B7] [Dm] [E7]
+[A:2] [B7:2] [Dm:2] [E7:2]
 
 {VERSE 1:}
-[A]Ma[G7]ybe it's much too early in the game
-[A]Ah[A7], [D]but[Dm] I thought I'd ask you just the same
-[A]Wh[F#7]at [B]are you doing New Year's
-[E7]New[A] [B7]Year[Dm]'s [E7]Eve?
-
+[A:4]Maybe it's much too [G7:4]early in the game
+[A:2]Ah, but I [A7:2]thought I'd [D:2]ask you just [Dm:2]the same
+[A:2]What are you [F#7:2]doing [B:4]New Year's
+[E7:4]New Year's [A:2) Eve? [B7:2] [Dm:2] [E7:2]
 {VERSE 2:}
+[A:4]Whose going to be the [G7:4]one to hold you tight
+[A:2]When it's [A7:2]exactly [D:2]twelve oclock [Dm:2]at night
+[A:2]Welcoming in [F#7:2]the [B:4]New Year
+[E7:4]New Year's [A:2] Eve? [G#7:4]
+
 [A]Wh[G7]o’s going to be the one to hold you tight
 [A]Wh[A7]en [D]it[Dm]'s exactly twelve o'clock that night
 [A]We[F#7]lcom[B]ing in the New Year
 [E7]New[A] [G#7]Year's Eve
 
 MIDDLE
-[C#m]Mayb[F#7]e [Am]I'm crazy to suppose
-[C#m]I'd [F#7]ever[D7] be the one you chose
-[C#m]Out [F#7]of a thousand invitations
-[B]Yo[E7#5]u received
+[C#m:4]Maybe I'm [F#7:2]crazy to [Am:2]suppose
+[C#m:4]I'd ever be [F#7:2]the one [D7:2]you chose
+[C#m:4]Out of a thousand [F#7:4]invitations
+[B:4]You re [E7:4] ceived
 
 {VERSE 3:}
-[A]Oo[G7]h, but in case I stand one little chance
-[A]He[A7]re [D]co[Dm]mes the jackpot question in advance
-[A]Wh[F#7]at [B]are you doing New Year's
-[E7]New[A] [Fm]Year[E7]'s Eve?
-[A]Wh[F#7]at [B]are you doing New Year's
-[E7]New[A] Year's Eve?
+[A:4]Ooh, but in case I [G7:4]stand one little chance
+[A:2]Here comes the [A7:2]jackpot [D:2]question in [Dm:2]advance
+[A:2]What are you [F#7:2]doing [B:4]New Year's
+[E7:4]New Year's [A:2] Eve?
