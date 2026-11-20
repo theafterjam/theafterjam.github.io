@@ -197,6 +197,70 @@
     pointer-events: none; z-index: 1;
   }
 
+  /* === Performance View === */
+  .setlist-perform-btn {
+    margin: 8px 12px 4px; padding: 8px; border: none; border-radius: 4px;
+    background: #27ae60; color: #fff; font-weight: 700; font-size: 0.9em; cursor: pointer;
+  }
+  .setlist-perform-btn:hover { background: #219a52; }
+  .perf-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 700;
+    background: #fff; overflow: hidden;
+    user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+  }
+  .perf-bar {
+    position: absolute; top: 0; left: 0; right: 0; height: 40px; z-index: 3;
+    display: flex; align-items: center; gap: 12px; padding: 0 12px;
+    background: #2c3e50; color: #fff; font-size: 14px;
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .perf-bar.visible { opacity: 1; }
+  .perf-bar .perf-pos, .perf-bar .perf-page-num { opacity: 0.8; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .perf-bar .perf-title {
+    flex: 1; min-width: 0; background: none; border: none; color: #fff; text-align: left;
+    font-size: 15px; font-weight: 700; cursor: pointer; padding: 6px 0;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .perf-bar .perf-close {
+    background: #e74c3c; color: #fff; border: none; border-radius: 4px;
+    width: 32px; height: 28px; font-size: 16px; cursor: pointer;
+  }
+  .perf-stage { position: absolute; top: 40px; left: 0; right: 0; bottom: 0; overflow: hidden; touch-action: pan-y; }
+  .perf-page { position: absolute; top: 0; left: 0; right: 0; bottom: 0; overflow-y: auto; display: flex; align-items: flex-start; }
+  .perf-col { flex: 0 0 auto; min-height: 100%; }
+  .perf-col + .perf-col { box-shadow: inset 1px 0 0 #e0e0e0; }   /* inset: a border would widen the screen */
+  .perf-bar .perf-ctl {
+    background: rgba(255, 255, 255, 0.14); color: #fff; border: none; border-radius: 4px;
+    height: 28px; padding: 0 9px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;
+  }
+  .perf-bar .perf-ctl:hover { background: rgba(255, 255, 255, 0.25); }
+  .perf-bar .perf-zoom-label { min-width: 50px; }
+  @media (max-width: 600px) {
+    .perf-bar { gap: 6px; padding: 0 8px; }
+    .perf-bar .perf-pos { display: none; }
+    .perf-bar .perf-ctl { padding: 0 6px; }
+  }
+  .perf-measure { position: absolute; top: 0; left: 0; right: 0; visibility: hidden; pointer-events: none; }
+  /* Sits in the top strip, which is empty once the bar fades, so it never covers the song */
+  .perf-cue {
+    position: absolute; top: 6px; right: 12px; z-index: 2; display: none;
+    background: rgba(44, 62, 80, 0.85); color: #fff; padding: 4px 14px; border-radius: 14px;
+    font-size: 14px; font-weight: 600; pointer-events: none;
+    max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .perf-cue.visible { display: block; }
+  .perf-list {
+    position: absolute; top: 40px; left: 0; bottom: 0; width: min(360px, 90%); z-index: 4;
+    background: #2c3e50; color: #fff; overflow-y: auto;
+    transform: translateX(-100%); transition: transform 0.2s ease;
+  }
+  .perf-list.open { transform: none; box-shadow: 2px 0 12px rgba(0, 0, 0, 0.3); }
+  .perf-list ol { list-style: none; margin: 0; padding: 0; }
+  .perf-list li { display: flex; gap: 10px; padding: 12px 16px; border-bottom: 1px solid #34495e; cursor: pointer; font-size: 15px; }
+  .perf-list li:hover { background: #34495e; }
+  .perf-list li.current { background: #3498db; }
+  .perf-list li .num { min-width: 2em; text-align: right; opacity: 0.7; }
+
   /* === Main content === */
   .main-content { flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; position: relative; }
 
@@ -714,6 +778,7 @@
           <button class="setlist-export setlist-copy-btn" onclick="exportSetListToClipboard()" title="Copy as table">&#128203;</button>
           <button class="setlist-export" onclick="openSetlistPrintPreview()" title="Print set list">&#128424;</button>
         </div>
+        <button class="setlist-perform-btn" onclick="openPerformanceView()" title="Full-screen paged view for performing">&#9654; Perform</button>
         <ul id="setlistSongs"></ul>
         <div class="setlist-add-song">
           <input type="text" id="setlistSongSearch" placeholder="Add song..." oninput="updateSetlistSongSearch()">
@@ -6677,6 +6742,524 @@ function closeSetlistPrintPreview() {
   printPreviewOverlay = null;
   const appLayout = document.querySelector('.app-layout');
   if (appLayout) appLayout.style.display = '';
+}
+
+// --- Performance View ---
+// Full-screen, paged view of the active set list. Each song uses its saved print settings
+// (Pages / Layout / Chords / Key) but is paginated to the screen instead of paper.
+
+const PERF_MIN_FONT = 12;   // readable floor: songs that don't fit get an extra screen instead of smaller text
+const PERF_MAX_FONT = 48;
+const PERF_BAR_HIDE_MS = 3000;
+const PERF_SWIPE_MIN = 50;
+const PERF_EDGE_GUARD = 20;   // iOS Safari uses swipes from the screen edge for back/forward
+// Text size is a zoom relative to each song's auto-fitted size, set once for the whole set list
+const PERF_ZOOM_STEPS = [0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.35, 1.5, 1.75, 2];
+const PERF_ZOOM_MIN_FONT = 8;
+const PERF_ZOOM_MAX_FONT = 72;
+const PERF_COLUMN_CHOICES = ['auto', 1, 2];
+// { zoom, columns } for this device, shared by every set list ("this laptop needs bigger text").
+// localStorage is already per device/browser, so the MacBook and iPad each keep their own.
+const PERF_VIEW_KEY = 'uke-perf-view';
+let perf = null;
+
+function perfLoadView() {
+  const view = { zoom: 1, columns: 'auto' };
+  try {
+    const saved = JSON.parse(localStorage.getItem(PERF_VIEW_KEY) || '{}');
+    if (PERF_ZOOM_STEPS.includes(saved.zoom)) view.zoom = saved.zoom;
+    if (PERF_COLUMN_CHOICES.includes(saved.columns)) view.columns = saved.columns;
+  } catch (e) {}
+  return view;
+}
+
+function perfSaveView() {
+  try { localStorage.setItem(PERF_VIEW_KEY, JSON.stringify(perf.view)); } catch (e) {}
+}
+
+function openPerformanceView() {
+  const sl = setLists.find(s => s.id === activeSetListId);
+  if (!sl) return;
+  const allSettings = loadPrintSettings(sl.id);
+  const songs = [];
+  for (const entry of sl.songs) {
+    const song = library.find(s => s.id === entry.songId);
+    if (!song) continue;
+    const settings = Object.assign({}, getDefaultPrintSettings(entry.songId), allSettings[entry.songId] || {});
+    songs.push({ song, settings, title: parseChordPro(song.content).title || song.title || 'Untitled' });
+  }
+  if (!songs.length) return;
+
+  // Start at the highlighted song, else the loaded one, else the top of the set list
+  const items = Array.from(document.getElementById('setlistSongs').querySelectorAll('li:not(.sidebar-empty)'));
+  let start = items.findIndex(li => li.classList.contains('highlighted'));
+  if (start < 0) start = items.findIndex(li => li.classList.contains('active'));
+  if (start < 0 || start >= songs.length) start = 0;
+
+  if (playbackTimeout) stopPlayback();
+  if (scrollInterval) stopAutoScroll();
+  if (document.querySelector('.sidebar.open')) toggleMobileSidebar();
+  if (document.activeElement) document.activeElement.blur();
+
+  const overlay = document.createElement('div');
+  overlay.className = 'perf-overlay';
+  overlay.innerHTML =
+    '<div class="perf-bar">' +
+      '<span class="perf-pos"></span>' +
+      '<button class="perf-title" title="Set list (L)"></button>' +
+      '<button class="perf-ctl perf-zoom-out" title="Smaller text (−)">A&minus;</button>' +
+      '<button class="perf-ctl perf-zoom-label" title="Reset text size (0)"></button>' +
+      '<button class="perf-ctl perf-zoom-in" title="Larger text (+)">A+</button>' +
+      '<button class="perf-ctl perf-cols" title="Columns: Auto / 1 / 2 (keys 1, 2, C = cycle)"></button>' +
+      '<span class="perf-page-num"></span>' +
+      '<button class="perf-close" title="Exit (Esc)">&#10005;</button>' +
+    '</div>' +
+    '<div class="perf-cue"></div>' +
+    '<div class="perf-stage"></div>' +
+    '<div class="perf-list"><ol></ol></div>';
+  document.body.appendChild(overlay);
+
+  perf = {
+    view: perfLoadView(),
+    songs, songIdx: start, pageIdx: 0, pages: [], listOpen: false,
+    overlay, stage: overlay.querySelector('.perf-stage'), bar: overlay.querySelector('.perf-bar'),
+    cue: overlay.querySelector('.perf-cue'), list: overlay.querySelector('.perf-list'),
+    hideTimer: null, resizeTimer: null, wakeLock: null, pointer: null, size: ''
+  };
+
+  perf.bar.querySelector('.perf-title').addEventListener('click', () => perfToggleList());
+  perf.bar.querySelector('.perf-close').addEventListener('click', closePerformanceView);
+  perf.bar.querySelector('.perf-zoom-out').addEventListener('click', () => perfSetZoom(-1));
+  perf.bar.querySelector('.perf-zoom-in').addEventListener('click', () => perfSetZoom(1));
+  perf.bar.querySelector('.perf-zoom-label').addEventListener('click', () => perfSetZoom(0));
+  perf.bar.querySelector('.perf-cols').addEventListener('click', () => perfSetColumns('cycle'));
+  // While the bar is faded out, the first tap only brings it back
+  perf.bar.addEventListener('click', (e) => {
+    if (!perf.bar.classList.contains('visible')) { e.stopPropagation(); perfShowBar(); }
+  }, true);
+  // Rendered chords carry the editor's click/double-click handlers (voicing mode, play from here)
+  for (const type of ['click', 'dblclick']) {
+    perf.stage.addEventListener(type, (e) => { e.stopPropagation(); e.preventDefault(); }, true);
+  }
+  perf.stage.addEventListener('pointerdown', perfPointerDown);
+  perf.stage.addEventListener('pointerup', perfPointerUp);
+  perf.stage.addEventListener('pointercancel', () => { if (perf) perf.pointer = null; });
+  document.addEventListener('keydown', perfKeyHandler, true);
+  window.addEventListener('resize', perfOnResize);
+  document.addEventListener('visibilitychange', perfRequestWakeLock);
+
+  perfRequestWakeLock();
+  const requestFs = overlay.requestFullscreen || overlay.webkitRequestFullscreen;
+  if (requestFs) {
+    try { const p = requestFs.call(overlay); if (p && p.catch) p.catch(() => {}); } catch (e) {}
+  }
+
+  perf.size = perfStageSize();
+  perfShow();
+}
+
+function closePerformanceView() {
+  if (!perf) return;
+  const lastIdx = perf.songIdx;
+  document.removeEventListener('keydown', perfKeyHandler, true);
+  window.removeEventListener('resize', perfOnResize);
+  document.removeEventListener('visibilitychange', perfRequestWakeLock);
+  clearTimeout(perf.hideTimer);
+  clearTimeout(perf.resizeTimer);
+  if (perf.wakeLock) perf.wakeLock.release().catch(() => {});
+  if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
+  else if (document.webkitFullscreenElement && document.webkitExitFullscreen) document.webkitExitFullscreen();
+  perf.overlay.remove();
+  perf = null;
+
+  // Leave the set list highlighting the song we stopped on
+  const items = Array.from(document.getElementById('setlistSongs').querySelectorAll('li:not(.sidebar-empty)'));
+  items.forEach(li => li.classList.remove('highlighted'));
+  if (items[lastIdx]) {
+    items[lastIdx].classList.add('highlighted');
+    items[lastIdx].scrollIntoView({ block: 'nearest' });
+  }
+}
+
+function perfStageSize() {
+  return perf.stage.clientWidth + 'x' + perf.stage.clientHeight;
+}
+
+// Break a rendered song into page-able units. Grid sections can split between rows (each chord
+// row keeps its lyric row; the section label stays with the first row), so a long section
+// doesn't push a whole screen of blank space ahead of it.
+function perfUnits(container) {
+  const units = [];
+  for (const block of getSplittableBlocks(container)) {
+    const grid = block.classList.contains('ireal-section') ? block.querySelector(':scope > .ireal-grid') : null;
+    if (!grid) { units.push({ block }); continue; }
+    const parts = [];
+    for (const el of grid.children) {
+      const startsRow = el.classList.contains('ireal-row') && parts.length > 0 &&
+        parts[parts.length - 1].some(e => e.classList.contains('ireal-row'));
+      if (parts.length === 0 || startsRow) parts.push([]);
+      parts[parts.length - 1].push(el);
+    }
+    parts.forEach((rows, k) => units.push({ block, grid, rows, first: k === 0, last: k === parts.length - 1 }));
+  }
+  return units;
+}
+
+// Vertical extent of a unit including margins, measured from live layout
+function perfUnitExtent(u) {
+  const rect = u.block.getBoundingClientRect();
+  const style = getComputedStyle(u.block);
+  const marginTop = parseFloat(style.marginTop), marginBottom = parseFloat(style.marginBottom);
+  if (!u.grid) return { top: rect.top - marginTop, bottom: rect.bottom + marginBottom, empty: rect.height === 0 };
+  return {
+    // A continued section repeats the section's top margin on its new page
+    top: u.first ? rect.top - marginTop : u.rows[0].getBoundingClientRect().top - marginTop,
+    bottom: u.last ? rect.bottom + marginBottom : u.rows[u.rows.length - 1].getBoundingClientRect().bottom,
+    empty: false
+  };
+}
+
+// Group units into pages of at most pageHeight. Uses positions rather than summed heights so
+// the margins between and around blocks are counted too.
+function perfGroupUnits(units, pageHeight) {
+  const groups = [[]];
+  let pageTop = null, onPage = 0;
+  for (const u of units) {
+    const ext = perfUnitExtent(u);
+    if (ext.empty) { groups[groups.length - 1].push(u); continue; }
+    if (pageTop === null) pageTop = ext.top;
+    if (onPage > 0 && ext.bottom - pageTop > pageHeight) {
+      const prev = groups[groups.length - 1];
+      const next = [];
+      pageTop = ext.top;
+      onPage = 0;
+      // Don't strand a section label at the bottom: carry it over with the lines it introduces
+      const last = prev[prev.length - 1];
+      if (prev.length > 1 && !last.grid && last.block.classList.contains('section-label')) {
+        next.push(prev.pop());
+        pageTop = perfUnitExtent(last).top;
+        onPage = 1;
+      }
+      groups.push(next);
+    }
+    groups[groups.length - 1].push(u);
+    onPage++;
+  }
+  return groups;
+}
+
+// Move a group's units into a column. A grid section gets a shallow copy of its section and grid
+// wrappers in each column it appears in, so styling carries over when it continues.
+function perfBuildPage(group, fontSize) {
+  const page = document.createElement('div');
+  page.className = 'print-song-container perf-col';
+  page.style.setProperty('--print-song-font-size', fontSize + 'px');
+  let sectionPart = null, gridPart = null, partOf = null;
+  for (const u of group) {
+    if (!u.grid) { page.appendChild(u.block); partOf = null; continue; }
+    if (partOf !== u.block) {
+      sectionPart = u.block.cloneNode(false);
+      gridPart = u.grid.cloneNode(false);
+      if (u.first) {
+        for (const el of [...u.block.children]) { if (el === u.grid) break; sectionPart.appendChild(el); }
+      }
+      sectionPart.appendChild(gridPart);
+      page.appendChild(sectionPart);
+      partOf = u.block;
+    }
+    for (const row of u.rows) gridPart.appendChild(row);
+    if (u.last) {
+      for (const el of [...u.block.children]) { if (el !== u.grid) sectionPart.appendChild(el); }
+    }
+  }
+  return page;
+}
+
+function perfColumns() {
+  if (perf.view.columns !== 'auto') return perf.view.columns;
+  return perf.stage.clientWidth > perf.stage.clientHeight ? 2 : 1;
+}
+
+// Render song i into screens of portrait-shaped columns. The font is auto-sized so the song
+// fills its "Pages" setting rounded up to whole screens (a 1-page song in 2 columns spreads
+// across both), then scaled by the set list's zoom. A song that doesn't fit gets extra screens
+// rather than being cut off.
+function perfPaginate(i) {
+  if (perf.pages[i]) return perf.pages[i];
+  const { song, settings } = perf.songs[i];
+  const cols = perfColumns();
+  const colWidth = Math.floor(perf.stage.clientWidth / cols);
+  const measure = document.createElement('div');
+  measure.className = 'print-song-container perf-measure';
+  measure.style.width = colWidth + 'px';
+  perf.stage.appendChild(measure);
+  renderSongContent(song.content, settings, measure);
+
+  const padding = parseFloat(getComputedStyle(measure).paddingTop) + parseFloat(getComputedStyle(measure).paddingBottom);
+  const colHeight = perf.stage.clientHeight - padding - 4;
+  const wanted = Math.ceil((settings.pages || 1) / cols) * cols;
+  const units = perfUnits(measure);
+  const setFont = size => measure.style.setProperty('--print-song-font-size', size + 'px');
+
+  // Grid rows have a minimum width (measures per row are fixed), so in narrow columns the
+  // largest font that fits the width caps everything, including zoom
+  let lo = PERF_ZOOM_MIN_FONT, hi = PERF_ZOOM_MAX_FONT, widthLimit = PERF_ZOOM_MIN_FONT;
+  while (lo <= hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    setFont(mid);
+    if (measure.scrollWidth <= measure.clientWidth + 1) { widthLimit = mid; lo = mid + 1; }
+    else hi = mid - 1;
+  }
+
+  lo = PERF_MIN_FONT; hi = Math.min(PERF_MAX_FONT, widthLimit);
+  let best = Math.min(PERF_MIN_FONT, widthLimit);
+  while (lo <= hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    setFont(mid);
+    if (perfGroupUnits(units, colHeight).length <= wanted) { best = mid; lo = mid + 1; }
+    else hi = mid - 1;
+  }
+  const zoomed = Math.min(PERF_ZOOM_MAX_FONT, Math.round(best * perf.view.zoom), widthLimit);
+  const font = Math.max(PERF_ZOOM_MIN_FONT, zoomed);
+  measure.style.setProperty('--print-song-font-size', font + 'px');
+
+  const columns = perfGroupUnits(units, colHeight).map(group => perfBuildPage(group, font));
+  const screens = [];
+  for (let k = 0; k < columns.length; k += cols) {
+    const screen = document.createElement('div');
+    screen.className = 'perf-page';
+    for (const col of columns.slice(k, k + cols)) {
+      col.style.width = colWidth + 'px';
+      screen.appendChild(col);
+    }
+    screens.push(screen);
+  }
+  measure.remove();
+  perf.pages[i] = screens;
+  return screens;
+}
+
+// Re-split the current song (and drop cached ones) after a size, zoom, or column change,
+// keeping roughly the same place in the song
+function perfRelayout() {
+  const old = perf.pages[perf.songIdx];
+  const fraction = old ? perf.pageIdx / old.length : 0;
+  perf.pages = [];
+  perf.stage.querySelectorAll('.perf-page').forEach(p => p.remove());
+  perf.pageIdx = Math.floor(fraction * perfPaginate(perf.songIdx).length);
+  perfShow();
+}
+
+// dir: +1 larger, -1 smaller, 0 back to 100%
+function perfSetZoom(dir) {
+  let idx = PERF_ZOOM_STEPS.indexOf(1);
+  if (dir !== 0) {
+    const current = PERF_ZOOM_STEPS.reduce((best, z, k) =>
+      Math.abs(z - perf.view.zoom) < Math.abs(PERF_ZOOM_STEPS[best] - perf.view.zoom) ? k : best, 0);
+    idx = Math.max(0, Math.min(PERF_ZOOM_STEPS.length - 1, current + dir));
+  }
+  if (PERF_ZOOM_STEPS[idx] === perf.view.zoom) { perfShowBar(); return; }
+  perf.view.zoom = PERF_ZOOM_STEPS[idx];
+  perfSaveView();
+  perfRelayout();
+}
+
+// choice: 'auto', 1, 2, or 'cycle'
+function perfSetColumns(choice) {
+  if (choice === 'cycle') {
+    const k = PERF_COLUMN_CHOICES.indexOf(perf.view.columns);
+    choice = PERF_COLUMN_CHOICES[(k + 1) % PERF_COLUMN_CHOICES.length];
+  }
+  if (choice === perf.view.columns) { perfShowBar(); return; }
+  perf.view.columns = choice;
+  perfSaveView();
+  perfRelayout();
+}
+
+function perfShow() {
+  const pages = perfPaginate(perf.songIdx);
+  perf.pageIdx = Math.max(0, Math.min(perf.pageIdx, pages.length - 1));
+  perf.stage.querySelectorAll('.perf-page').forEach(p => p.remove());
+  const page = pages[perf.pageIdx];
+  perf.stage.appendChild(page);
+  page.scrollTop = 0;
+
+  const n = perf.songs.length;
+  perf.bar.querySelector('.perf-pos').textContent = (perf.songIdx + 1) + '/' + n;
+  perf.bar.querySelector('.perf-title').textContent = perf.songs[perf.songIdx].title;
+  perf.bar.querySelector('.perf-page-num').textContent = 'p. ' + (perf.pageIdx + 1) + '/' + pages.length;
+  perf.bar.querySelector('.perf-zoom-label').textContent = Math.round(perf.view.zoom * 100) + '%';
+  perf.bar.querySelector('.perf-cols').textContent = perf.view.columns === 'auto'
+    ? 'Cols: Auto (' + perfColumns() + ')' : 'Cols: ' + perf.view.columns;
+
+  const isLastPage = perf.pageIdx === pages.length - 1;
+  perf.cue.textContent = perf.songIdx < n - 1 ? 'Next: ' + perf.songs[perf.songIdx + 1].title + ' ▸' : 'End of set';
+  perf.cue.classList.toggle('visible', isLastPage);
+  if (perf.listOpen) perfRenderList();
+  perfShowBar();   // flash the bar on every page turn so the song and page number are visible
+
+  // Lay out the next song ahead of time so turning into it is instant
+  const nextIdx = perf.songIdx + 1;
+  if (nextIdx < n && !perf.pages[nextIdx]) {
+    setTimeout(() => { if (perf && !perf.pages[nextIdx]) perfPaginate(nextIdx); }, 300);
+  }
+}
+
+function perfNext() {
+  const pages = perfPaginate(perf.songIdx);
+  if (perf.pageIdx < pages.length - 1) {
+    perf.pageIdx++;
+    perfShow();
+  } else if (perf.songIdx < perf.songs.length - 1) {
+    perf.songIdx++;
+    perf.pageIdx = 0;
+    perfShow();
+  }
+}
+
+function perfPrev() {
+  if (perf.pageIdx > 0) {
+    perf.pageIdx--;
+    perfShow();
+  } else if (perf.songIdx > 0) {
+    perf.songIdx--;
+    perf.pageIdx = perfPaginate(perf.songIdx).length - 1;
+    perfShow();
+  }
+}
+
+function perfGoToSong(i) {
+  if (i < 0 || i >= perf.songs.length) return;
+  perf.songIdx = i;
+  perf.pageIdx = 0;
+  perfShow();
+}
+
+function perfShowBar() {
+  perf.bar.classList.add('visible');
+  clearTimeout(perf.hideTimer);
+  perf.hideTimer = setTimeout(() => {
+    if (perf && !perf.listOpen) perf.bar.classList.remove('visible');
+  }, PERF_BAR_HIDE_MS);
+}
+
+function perfToggleBar() {
+  if (perf.bar.classList.contains('visible') && !perf.listOpen) {
+    clearTimeout(perf.hideTimer);
+    perf.bar.classList.remove('visible');
+  } else {
+    perfShowBar();
+  }
+}
+
+function perfRenderList() {
+  const ol = perf.list.querySelector('ol');
+  ol.innerHTML = '';
+  perf.songs.forEach((s, i) => {
+    const li = document.createElement('li');
+    if (i === perf.songIdx) li.className = 'current';
+    const num = document.createElement('span');
+    num.className = 'num';
+    num.textContent = (i + 1) + '.';
+    const title = document.createElement('span');
+    title.textContent = s.title;
+    li.appendChild(num);
+    li.appendChild(title);
+    li.addEventListener('click', () => { perfToggleList(false); perfGoToSong(i); });
+    ol.appendChild(li);
+  });
+}
+
+function perfToggleList(force) {
+  perf.listOpen = force !== undefined ? force : !perf.listOpen;
+  if (perf.listOpen) {
+    perfRenderList();
+    const current = perf.list.querySelector('li.current');
+    if (current) current.scrollIntoView({ block: 'center' });
+  }
+  perf.list.classList.toggle('open', perf.listOpen);
+  perfShowBar();
+}
+
+// Capture phase so page-turn keys never reach the app's own shortcuts (arrows = scroll speed,
+// Space = auto-scroll, Esc = scroll to top). Page-turner pedals send arrows, Page Up/Down,
+// Space, or Enter depending on their mode, so all of them turn pages.
+function perfKeyHandler(e) {
+  if (!perf || e.metaKey || e.ctrlKey || e.altKey) return;
+  e.preventDefault();
+  e.stopPropagation();
+  if (e.repeat) return;
+  const k = e.key;
+  if (k === 'Escape') {
+    if (perf.listOpen) perfToggleList(false);
+    else closePerformanceView();
+  } else if (e.shiftKey && k === 'ArrowRight') {
+    perfGoToSong(perf.songIdx + 1);
+  } else if (e.shiftKey && k === 'ArrowLeft') {
+    perfGoToSong(perf.songIdx - 1);
+  } else if (k === 'ArrowRight' || k === 'ArrowDown' || k === 'PageDown' || k === 'Enter' || (k === ' ' && !e.shiftKey)) {
+    perfNext();
+  } else if (k === 'ArrowLeft' || k === 'ArrowUp' || k === 'PageUp' || k === ' ') {
+    perfPrev();
+  } else if (k === 'l' || k === 'L') {
+    perfToggleList();
+  } else if (k === '+' || k === '=') {
+    perfSetZoom(1);
+  } else if (k === '-' || k === '_') {
+    perfSetZoom(-1);
+  } else if (k === '0') {
+    perfSetZoom(0);
+  } else if (k === '1' || k === '2') {
+    perfSetColumns(Number(k));
+  } else if (k === 'c' || k === 'C') {
+    perfSetColumns('cycle');
+  } else {
+    perfShowBar();
+  }
+}
+
+function perfPointerDown(e) {
+  if (e.button !== 0) return;
+  const rect = perf.stage.getBoundingClientRect();
+  perf.pointer = { x: e.clientX - rect.left, y: e.clientY - rect.top, width: rect.width };
+}
+
+function perfPointerUp(e) {
+  const start = perf && perf.pointer;
+  if (!start) return;
+  perf.pointer = null;
+  const rect = perf.stage.getBoundingClientRect();
+  const dx = (e.clientX - rect.left) - start.x;
+  const dy = (e.clientY - rect.top) - start.y;
+
+  if (perf.listOpen) { perfToggleList(false); return; }
+
+  if (Math.abs(dx) >= PERF_SWIPE_MIN && Math.abs(dx) > Math.abs(dy) * 1.5) {
+    const fromEdge = start.x < PERF_EDGE_GUARD || start.x > start.width - PERF_EDGE_GUARD;
+    if (!fromEdge) { if (dx < 0) perfNext(); else perfPrev(); }
+  } else if (Math.abs(dx) < 10 && Math.abs(dy) < 10) {
+    const rel = start.x / start.width;
+    if (rel < 0.2) perfPrev();
+    else if (rel > 0.8) perfNext();
+    else perfToggleBar();
+  }
+}
+
+function perfOnResize() {
+  if (!perf) return;
+  clearTimeout(perf.resizeTimer);
+  perf.resizeTimer = setTimeout(() => {
+    if (!perf) return;
+    const size = perfStageSize();
+    if (size === perf.size) return;   // iOS fires resize when its toolbars show/hide
+    perf.size = size;
+    perfRelayout();
+  }, 250);
+}
+
+async function perfRequestWakeLock() {
+  if (!perf || document.visibilityState !== 'visible' || !('wakeLock' in navigator)) return;
+  try { perf.wakeLock = await navigator.wakeLock.request('screen'); } catch (e) {}
 }
 
 function exportSetListToFile() {
