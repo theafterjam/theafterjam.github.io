@@ -6745,15 +6745,16 @@ function closeSetlistPrintPreview() {
 }
 
 // --- Performance View ---
-// Full-screen, paged view of the active set list. Each song uses its saved print settings
-// (Pages / Layout / Chords / Key) but is paginated to the screen instead of paper.
+// Full-screen, paged view of the active set list. Each song is shown the way it looks in the
+// main view (its saved Layout / Chords / Key), independent of the set list's print settings,
+// and fitted to the screen.
 
 const PERF_MIN_FONT = 12;   // readable floor: songs that don't fit get an extra screen instead of smaller text
 const PERF_MAX_FONT = 48;
 const PERF_BAR_HIDE_MS = 3000;
 const PERF_SWIPE_MIN = 50;
 const PERF_EDGE_GUARD = 20;   // iOS Safari uses swipes from the screen edge for back/forward
-// Text size is a zoom relative to each song's auto-fitted size, set once for the whole set list
+// Text size is a zoom relative to each song's auto-fitted size, shared by the whole view
 const PERF_ZOOM_STEPS = [0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.35, 1.5, 1.75, 2];
 const PERF_ZOOM_MIN_FONT = 8;
 const PERF_ZOOM_MAX_FONT = 72;
@@ -6777,16 +6778,27 @@ function perfSaveView() {
   try { localStorage.setItem(PERF_VIEW_KEY, JSON.stringify(perf.view)); } catch (e) {}
 }
 
+// A song's main-view settings (saved per song when changed in the toolbar), falling back to
+// the main view's current settings for songs never adjusted. Each song is fitted to one screen.
+function perfSongSettings(songId) {
+  const prefs = getSongPrefs(songId) || {};
+  return {
+    layout: prefs.layout || currentLayout,
+    chordFormat: prefs.chordFormat || currentChordFormat,
+    transpose: prefs.transpose != null ? prefs.transpose : 0,
+    showGridLyrics: document.getElementById('gridLyricsToggle').checked,
+    pages: 1
+  };
+}
+
 function openPerformanceView() {
   const sl = setLists.find(s => s.id === activeSetListId);
   if (!sl) return;
-  const allSettings = loadPrintSettings(sl.id);
   const songs = [];
   for (const entry of sl.songs) {
     const song = library.find(s => s.id === entry.songId);
     if (!song) continue;
-    const settings = Object.assign({}, getDefaultPrintSettings(entry.songId), allSettings[entry.songId] || {});
-    songs.push({ song, settings, title: parseChordPro(song.content).title || song.title || 'Untitled' });
+    songs.push({ song, settings: perfSongSettings(entry.songId), title: parseChordPro(song.content).title || song.title || 'Untitled' });
   }
   if (!songs.length) return;
 
@@ -6981,9 +6993,8 @@ function perfColumns() {
 }
 
 // Render song i into screens of portrait-shaped columns. The font is auto-sized so the song
-// fills its "Pages" setting rounded up to whole screens (a 1-page song in 2 columns spreads
-// across both), then scaled by the set list's zoom. A song that doesn't fit gets extra screens
-// rather than being cut off.
+// fills one screen (in 2 columns it spreads across both), then scaled by the device's zoom.
+// A song that doesn't fit at the minimum font gets extra screens rather than being cut off.
 function perfPaginate(i) {
   if (perf.pages[i]) return perf.pages[i];
   const { song, settings } = perf.songs[i];
