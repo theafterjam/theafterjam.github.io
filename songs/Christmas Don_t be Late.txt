@@ -3,18 +3,18 @@
 {time: 3/4}
 
 
-[A]Christmas, Christmas [E7]time is near, [E7]Time for toys and [A]time for cheer.
-[Bm]We've been [E7]good, but [Bm]we can't [E]last, [Bm]Hurry [E]Christmas, [A]hurry fast.
+[A:3]Christmas, [A:3]Christmas [E7:3]time is [E7:3]near, [E7:3]Time for [E7:3]toys and [A:3]time for [A:3]cheer.
+[Bm:3]We've been [E7:3]good, but [Bm:3]we can't [E7:3]last, [Bm:3]Hurry [E:3]Christmas, [A:3]hurry [A:3]fast.
 
-[A]Want a plane that [E]loops the [A]loop, Me, I [A7]want a [D]Hula-Hoop.
-[D]We can [Dm]hardly [A]stand the [B7]wait, Please [Bm]Christmas, [E7]don't be [A]late. [F#7]
+[A:3]Want a [A:3]plane that [E7:3]loops the [A:3]loop, [A:3]Me, I [A7:3]want a [D:3]Hula-[D:3]Hoop.
+[D:3]We can [Dm:3]hardly [A:3]stand the [B7:3]wait, Please [Bm:3]Christmas, [E7:3]don't be [A:3]late. [F#7:3]
 
 
 {Modulation:}
 
-[B]Christmas, Christmas [F#7]time is near, [F#7]Time for toys and [B]time for cheer.
-[C#m]We've been [F#7]good, but [C#m]we can't [F#]last, [C#m]Hurry [F#]Christmas, [B]Hurry fast.
+[B:3]Christmas, [B:3]Christmas [F#7:3]time is [F#7:3]near, [F#7:3]Time for [F#7:3]toys and [B:3]time for [B:3]cheer.
+[C#m:3]We've been [F#7:3]good, but [C#m:3]we can't [F#7:3]last, [C#m:3]Hurry [F#:3]Christmas, [B:3]Hurry [B:3]fast.
 
-[B]Want a plane that [F#]loops the [B]loop, I still [B7]want a [E]Hula-Hoop.
-[E]We can [Em]hardly [B]stand the [G#7]wait, Please [E]Christmas [F#7]don't be [B]late.
-[E]We can[Em] hardly [B]stand the [G#7]wait, Please [E]Christmas [F#7]don't be [B]late.
+[B:3]Want a [B:3]plane that [F#7:3]loops the [B:3]loop, [B:3]I still [B7:3]want a [E:3]Hula-[E:3]Hoop.
+[E:3]We can [Em:3]hardly [B:3]stand the [G#7:3]wait, Please [E:3]Christmas [F#7:3]don't be [B:6]late.
+[E:3]We can[Em:3] hardly [B:3]stand the [G#7:3]wait, Please [E:3]Christmas [F#7:3]don't be [B:6]late.

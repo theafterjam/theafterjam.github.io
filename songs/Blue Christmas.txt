@@ -2,12 +2,12 @@
 {artist: Elvis Prestley }
 {time: 4/4}
 
-[E]I'll have a blue Christmas [B]without you. I'll be so [B7]blue thinking [E]about you
-[E7]Decorations of [E]red on a [A]green Christmas [F#]tree. Won't be the same dear, [B7]if you're not here with [B]me
+I'll have a [E:8]blue Christmas [B:8]without you. I'll be so [B7:8]blue thinking [E:8]about you
+[E7:4]Decorations of [E:4]red on a [A:6]green Christmas tree. [Ab:1][G:1][F#:8] Won't be the same dear, [B7:4]if you're not here with [B:4]me
 
-[B7]And when those [E]blue snowflakes start [B]falling. That's when those [B7]blue memories start [E]calling
-You'll be [E7]doing all [E]right, with your [A]Christmas of [F#]white. But [B7]I'll have a blue, blue, blue, blue [E]Christmas
+And when those [E:8]blue snowflakes start [B:8]falling. That's when those [B7:8]blue memories start [E:8]calling
+You'll be [E7:4]doing all [E:4]right, with your [A:4]Christmas of [F#:4]white. But [B7:8]I'll have a blue, blue, blue, blue [E:8]Christmas
 
-[E] [B] [B7] [E]
+[E:8](Instrumental) [B:8] [B7:8] [E:8]
 
-You'll be [E7]doing all [E]right, with your [A]Christmas of [F#]white. But [B7]I'll have a blue, blue, blue, blue [E]Christmas
+You'll be [E7:4]doing all [E:4]right, with your [A:4]Christmas of [F#:4]white. But [B7:8]I'll have a blue, blue, blue, blue [E:8]Christmas
