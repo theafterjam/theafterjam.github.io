@@ -229,6 +229,10 @@
   .perf-page { position: absolute; top: 0; left: 0; right: 0; bottom: 0; overflow-y: auto; display: flex; align-items: flex-start; }
   .perf-col { flex: 0 0 auto; min-height: 100%; }
   .perf-col + .perf-col { box-shadow: inset 1px 0 0 #e0e0e0; }   /* inset: a border would widen the screen */
+  /* Grid lyrics that wrap between words (Performance View fallback when a wordy measure would widen the row too much) */
+  /* min-content: a word never gets clipped (a too-wide word widens the row, and the font search backs off);
+     wrap: a cell holding a lyric plus the next chord's lead-in words stacks them instead of squeezing both */
+  .perf-wrap-lyrics .ireal-lyric-cell { white-space: normal; text-overflow: clip; min-width: min-content; flex-wrap: wrap; column-gap: 0.3em; }
   .perf-bar .perf-ctl {
     background: rgba(255, 255, 255, 0.14); color: #fff; border: none; border-radius: 4px;
     height: 28px; padding: 0 9px; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;
@@ -6900,6 +6904,30 @@ function perfStageSize() {
 // Break a rendered song into page-able units. Grid sections can split between rows (each chord
 // row keeps its lyric row; the section label stays with the first row), so a long section
 // doesn't push a whole screen of blank space ahead of it.
+// In lyrics layout each chord's lyric segment is one unbreakable box (white-space: pre), so a long
+// phrase between two chords set the widest line and capped the font size. Split each segment into
+// one box per word: the chord stays above its first word and the rest wrap like normal text.
+function perfMakeLyricsWrappable(container) {
+  container.querySelectorAll('.line-wrap > .chord-pair').forEach(pair => {
+    const lyric = pair.querySelector(':scope > .lyric');
+    if (!lyric) return;
+    const words = lyric.textContent.match(/\s*\S+\s*/g);
+    if (!words || words.length < 2) return;
+    lyric.textContent = words[0];
+    let after = pair;
+    for (let w = 1; w < words.length; w++) {
+      const box = document.createElement('span');
+      box.className = 'chord-pair perf-word';
+      const span = document.createElement('span');
+      span.className = 'lyric';
+      span.textContent = words[w];
+      box.appendChild(span);
+      after.after(box);
+      after = box;
+    }
+  });
+}
+
 function perfUnits(container) {
   const units = [];
   for (const block of getSplittableBlocks(container)) {
@@ -7004,37 +7032,71 @@ function perfPaginate(i) {
   measure.className = 'print-song-container perf-measure';
   measure.style.width = colWidth + 'px';
   perf.stage.appendChild(measure);
-  renderSongContent(song.content, settings, measure);
-
   const padding = parseFloat(getComputedStyle(measure).paddingTop) + parseFloat(getComputedStyle(measure).paddingBottom);
   const colHeight = perf.stage.clientHeight - padding - 4;
   const wanted = Math.ceil((settings.pages || 1) / cols) * cols;
-  const units = perfUnits(measure);
   const setFont = size => measure.style.setProperty('--print-song-font-size', size + 'px');
+  let units = [];
 
-  // Grid rows have a minimum width (measures per row are fixed), so in narrow columns the
-  // largest font that fits the width caps everything, including zoom
-  let lo = PERF_ZOOM_MIN_FONT, hi = PERF_ZOOM_MAX_FONT, widthLimit = PERF_ZOOM_MIN_FONT;
-  while (lo <= hi) {
-    const mid = Math.floor((lo + hi) / 2);
-    setFont(mid);
-    if (measure.scrollWidth <= measure.clientWidth + 1) { widthLimit = mid; lo = mid + 1; }
-    else hi = mid - 1;
-  }
+  // Grid rows have a minimum width (fixed measures per row, and lyrics wrap only between words),
+  // and in lyrics layout each chord's phrase can't wrap, so the largest font that fits the width caps the font
+  const findWidthLimit = () => {
+    let lo = PERF_ZOOM_MIN_FONT, hi = PERF_ZOOM_MAX_FONT, limit = PERF_ZOOM_MIN_FONT;
+    while (lo <= hi) {
+      const mid = Math.floor((lo + hi) / 2);
+      setFont(mid);
+      if (measure.scrollWidth <= measure.clientWidth + 1) { limit = mid; lo = mid + 1; }
+      else hi = mid - 1;
+    }
+    return limit;
+  };
+  const findBest = limit => {
+    let lo = PERF_MIN_FONT, hi = Math.min(PERF_MAX_FONT, limit);
+    let best = Math.min(PERF_MIN_FONT, limit);
+    while (lo <= hi) {
+      const mid = Math.floor((lo + hi) / 2);
+      setFont(mid);
+      if (perfGroupUnits(units, colHeight).length <= wanted) { best = mid; lo = mid + 1; }
+      else hi = mid - 1;
+    }
+    return best;
+  };
+  // Render, then size: best = largest font that fits the song's Pages, font = best scaled by zoom (within the width cap).
+  // wrap: let lyrics wrap between words (see below).
+  const isGrid = settings.layout === 'grid';
+  const render = wrap => {
+    renderSongContent(song.content, settings, measure);
+    measure.classList.toggle('perf-wrap-lyrics', wrap && isGrid);
+    if (wrap && !isGrid) perfMakeLyricsWrappable(measure);
+    units = perfUnits(measure);
+  };
+  const fit = wrap => {
+    render(wrap);
+    const widthLimit = findWidthLimit();
+    const best = findBest(widthLimit);
+    const font = Math.min(PERF_ZOOM_MAX_FONT, Math.round(best * perf.view.zoom), widthLimit);
+    setFont(font);
+    return { wrap, widthLimit, best, font, screens: perfGroupUnits(units, colHeight).length };
+  };
 
-  lo = PERF_MIN_FONT; hi = Math.min(PERF_MAX_FONT, widthLimit);
-  let best = Math.min(PERF_MIN_FONT, widthLimit);
-  while (lo <= hi) {
-    const mid = Math.floor((lo + hi) / 2);
-    setFont(mid);
-    if (perfGroupUnits(units, colHeight).length <= wanted) { best = mid; lo = mid + 1; }
-    else hi = mid - 1;
+  // First try the song exactly as the main view lays it out. Only if the width is what stops the font
+  // (a wordy measure or lyric phrase reaching the screen edge) try letting the lyrics wrap between words.
+  // Wrapping costs height (and in grid evens out measure widths), so it's only a fallback.
+  let chosen = fit(false);
+  if (chosen.best >= chosen.widthLimit || Math.round(chosen.best * perf.view.zoom) > chosen.widthLimit) {
+    const wrapped = fit(true);
+    // Zoomed in: bigger text wins. At 100%: only if it also keeps to the song's Pages (or rescues unreadable text).
+    const better = perf.view.zoom > 1
+      ? wrapped.font > chosen.font
+      : wrapped.font > chosen.font && (wrapped.screens <= chosen.screens || chosen.font < PERF_MIN_FONT);
+    if (better) chosen = wrapped;
+    render(chosen.wrap);                                           // the measure holds the last trial
   }
-  const zoomed = Math.min(PERF_ZOOM_MAX_FONT, Math.round(best * perf.view.zoom), widthLimit);
-  const font = Math.max(PERF_ZOOM_MIN_FONT, zoomed);
+  const font = Math.max(PERF_ZOOM_MIN_FONT, chosen.font);
   measure.style.setProperty('--print-song-font-size', font + 'px');
 
   const columns = perfGroupUnits(units, colHeight).map(group => perfBuildPage(group, font));
+  if (chosen.wrap && isGrid) columns.forEach(col => col.classList.add('perf-wrap-lyrics'));
   const screens = [];
   for (let k = 0; k < columns.length; k += cols) {
     const screen = document.createElement('div');
